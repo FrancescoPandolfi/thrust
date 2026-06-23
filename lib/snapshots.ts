@@ -1,7 +1,7 @@
 import { and, desc, eq } from "drizzle-orm";
 import { computePortfolio } from "./calculations";
 import { getDb } from "./db";
-import { getQuoteMap } from "./prices";
+import { getQuoteMap, hasMissingQuotes } from "./prices";
 import {
   cashBalances,
   dailyReturns,
@@ -27,7 +27,10 @@ export async function getCurrentPortfolioValues() {
   ]);
 
   const symbols = posRows.map((p) => p.yahooSymbol);
-  const quotes = await getQuoteMap(symbols);
+  let quotes = await getQuoteMap(symbols, { refresh: true });
+  if (hasMissingQuotes([...quotes.values()])) {
+    quotes = await getQuoteMap(symbols, { refresh: false });
+  }
   const { totals } = computePortfolio(posRows, cashRows, quotes, true);
 
   return {

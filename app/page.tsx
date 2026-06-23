@@ -1,7 +1,5 @@
 import { AppShell } from "@/components/AppShell";
-import {
-  AllocationDonut,
-} from "@/components/charts/AllocationDonut";
+import { AllocationDonut } from "@/components/charts/AllocationDonut";
 import { PortfolioMetrics } from "@/components/charts/PortfolioMetrics";
 import { PortfolioTable } from "@/components/PortfolioTable";
 import { RefreshPricesButton } from "@/components/RefreshPricesButton";
@@ -11,6 +9,9 @@ export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
   const { positions, totals, allocation } = await loadPortfolioData();
+  const needsRefresh = positions.some(
+    (position) => position.stale || position.price <= 0,
+  );
 
   return (
     <AppShell>
@@ -19,6 +20,13 @@ export default async function HomePage() {
           <h1 className="text-2xl font-semibold text-zinc-100">Portfolio</h1>
           <RefreshPricesButton />
         </div>
+
+        {needsRefresh && (
+          <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+            Prices are missing or outdated. Click <strong>Refresh prices</strong>{" "}
+            once — if Yahoo rate-limits you, wait 15 minutes and try again.
+          </div>
+        )}
 
         <PortfolioMetrics
           totalValueEur={totals.totalValueEur}
