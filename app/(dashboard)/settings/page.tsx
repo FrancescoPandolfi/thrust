@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/AppShell";
 import { TickerDiagnostics } from "@/components/TickerDiagnostics";
 import {
   formatInstrumentLabel,
@@ -55,8 +54,7 @@ export default async function SettingsPage() {
   });
 
   return (
-    <AppShell>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-100">Settings</h1>
           <p className="mt-1 text-sm text-zinc-400">
@@ -64,8 +62,7 @@ export default async function SettingsPage() {
             values.
           </p>
         </div>
-        <TickerDiagnostics positions={rows} />
-      </div>
-    </AppShell>
+      <TickerDiagnostics positions={rows} />
+    </div>
   );
 }

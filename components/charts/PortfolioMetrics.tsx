@@ -8,8 +8,10 @@ type Props = {
   totalPlEur: number;
   totalPlPct: number;
   cashValueEur?: number;
-  totalLoadEur?: number;
   includeCashMetric?: boolean;
+  includeTodayReturn?: boolean;
+  todayReturnEur?: number | null;
+  todayReturnPct?: number | null;
 };
 
 export function PortfolioMetrics({
@@ -17,18 +19,35 @@ export function PortfolioMetrics({
   totalPlEur,
   totalPlPct,
   cashValueEur,
-  totalLoadEur,
   includeCashMetric = true,
+  includeTodayReturn = false,
+  todayReturnEur = null,
+  todayReturnPct = null,
 }: Props) {
   const plColor = totalPlEur >= 0 ? "text-emerald-400" : "text-rose-400";
   const plPrefix = totalPlEur >= 0 ? "+" : "";
   const plPctPrefix = totalPlPct >= 0 ? "+" : "";
-  const fourthMetric =
-    totalLoadEur != null
-      ? { label: "Load value", value: formatEur(totalLoadEur) }
-      : { label: "Cash", value: formatEur(cashValueEur ?? 0) };
+  const todayColor =
+    todayReturnEur != null && todayReturnEur >= 0
+      ? "text-emerald-400"
+      : "text-rose-400";
+  const todayPrefix = todayReturnEur != null && todayReturnEur >= 0 ? "+" : "";
+  const todayPctPrefix =
+    todayReturnPct != null && todayReturnPct >= 0 ? "+" : "";
+  const todayValue =
+    todayReturnEur != null
+      ? `${todayPrefix}${formatEur(todayReturnEur)}${
+          todayReturnPct != null
+            ? ` (${todayPctPrefix}${formatPct(todayReturnPct)})`
+            : ""
+        }`
+      : "—";
+  const fourthMetric = {
+    label: "Cash",
+    value: formatEur(cashValueEur ?? 0),
+  };
 
-  if (totalLoadEur != null) {
+  if (includeTodayReturn) {
     return (
       <div className="grid h-[250px] grid-cols-2 grid-rows-2 gap-3">
         <MetricCard
@@ -38,9 +57,9 @@ export function PortfolioMetrics({
         />
         <MetricCard
           className="flex flex-col justify-center"
-          label="Load value"
-          value={formatEur(totalLoadEur)}
-          valueClassName="text-zinc-500"
+          label="Today's return"
+          value={todayValue}
+          valueClassName={todayReturnEur != null ? todayColor : "text-zinc-100"}
         />
         <MetricCard
           className="flex flex-col justify-center"

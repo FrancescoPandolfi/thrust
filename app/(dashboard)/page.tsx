@@ -1,19 +1,22 @@
-import { AppShell } from "@/components/AppShell";
 import { PortfolioOverview } from "@/components/PortfolioOverview";
 import { PortfolioTable } from "@/components/PortfolioTable";
 import { RefreshPricesButton } from "@/components/RefreshPricesButton";
 import { loadPortfolioData } from "@/lib/portfolio";
+import { getTodaySummary } from "@/lib/returns";
 
 export const dynamic = "force-dynamic";
 
 export default async function HomePage() {
-  const { positions, totals, allocation } = await loadPortfolioData();
+  const [{ positions, totals, allocation }, today] = await Promise.all([
+    loadPortfolioData(),
+    getTodaySummary(),
+  ]);
   const needsRefresh = positions.some(
     (position) => position.stale || position.price <= 0,
   );
 
   return (
-    <AppShell>
+    <>
       <div className="space-y-6">
         <h1 className="text-2xl font-semibold text-zinc-100">Portfolio</h1>
 
@@ -28,7 +31,8 @@ export default async function HomePage() {
           totalValueEur={totals.positionsValueEur}
           totalPlEur={totals.totalPlEur}
           totalPlPct={totals.totalPlPct}
-          totalLoadEur={totals.totalLoadEur}
+          todayReturnEur={today.returnEur}
+          todayReturnPct={today.returnPct}
           allocation={allocation}
           positions={positions}
         />
@@ -36,6 +40,6 @@ export default async function HomePage() {
         <PortfolioTable positions={positions} totals={totals} />
       </div>
       <RefreshPricesButton />
-    </AppShell>
+    </>
   );
 }

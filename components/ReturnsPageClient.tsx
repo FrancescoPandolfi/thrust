@@ -2,6 +2,7 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
+import { useNavigationProgress } from "@/components/NavigationProgress";
 import { ReturnsBarChart } from "@/components/charts/ReturnsBarChart";
 import { ReturnsOverview } from "@/components/ReturnsOverview";
 import { ReturnsTable } from "@/components/ReturnsTable";
@@ -41,17 +42,19 @@ type Period = "daily" | "weekly";
 export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { start } = useNavigationProgress();
   const [period, setPeriod] = useState<Period>("daily");
 
   const currentRange = searchParams.get("range") ?? "3M";
 
   const setRange = useCallback(
     (label: string) => {
+      start();
       const params = new URLSearchParams(searchParams.toString());
       params.set("range", label);
       router.push(`/returns?${params.toString()}`);
     },
-    [router, searchParams],
+    [router, searchParams, start],
   );
 
   const dailyChartData = daily.map((d) => ({

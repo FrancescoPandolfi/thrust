@@ -10,7 +10,8 @@ type Props = {
   totalValueEur: number;
   totalPlEur: number;
   totalPlPct: number;
-  totalLoadEur: number;
+  todayReturnEur: number | null;
+  todayReturnPct: number | null;
   allocation: AllocationSlice[];
   positions: ComputedPosition[];
 };
@@ -19,7 +20,8 @@ export function PortfolioOverview({
   totalValueEur,
   totalPlEur,
   totalPlPct,
-  totalLoadEur,
+  todayReturnEur,
+  todayReturnPct,
   allocation,
   positions,
 }: Props) {
@@ -29,7 +31,9 @@ export function PortfolioOverview({
         totalValueEur={totalValueEur}
         totalPlEur={totalPlEur}
         totalPlPct={totalPlPct}
-        totalLoadEur={totalLoadEur}
+        includeTodayReturn
+        todayReturnEur={todayReturnEur}
+        todayReturnPct={todayReturnPct}
       />
       <AllocationPanel allocation={allocation} positions={positions} />
     </div>

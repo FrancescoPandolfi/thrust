@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/AppShell";
 import { ErrorDashboard } from "@/components/ErrorDashboard";
 import { getProductionErrors, getProductionErrorStats } from "@/lib/errors";
 
@@ -11,8 +10,7 @@ export default async function ErrorsPage() {
   ]);
 
   return (
-    <AppShell>
-      <div className="space-y-6">
+    <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-semibold text-zinc-100">Errors</h1>
           <p className="mt-1 text-sm text-zinc-400">
@@ -34,8 +32,7 @@ export default async function ErrorsPage() {
             last7d: stats.last7d,
             latestAt: stats.latestAt?.toISOString() ?? null,
           }}
-        />
-      </div>
-    </AppShell>
+      />
+    </div>
   );
 }

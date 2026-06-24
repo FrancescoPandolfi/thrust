@@ -1,4 +1,3 @@
-import { AppShell } from "@/components/AppShell";
 import { ReturnsPageClient } from "@/components/ReturnsPageClient";
 import {
   getCloseSnapshotsForChart,
@@ -44,13 +43,11 @@ export default async function ReturnsPage({ searchParams }: Props) {
   ]);
 
   return (
-    <AppShell>
-      <ReturnsPageClient
+    <ReturnsPageClient
         today={today}
         daily={daily}
         weekly={weekly}
-        chart={chart}
-      />
-    </AppShell>
+      chart={chart}
+    />
   );
 }
