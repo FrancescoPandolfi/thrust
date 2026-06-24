@@ -1,14 +1,14 @@
 import bcrypt from "bcryptjs";
 import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
-import { getSessionOptions } from "@/lib/session-config";
+import { getSessionOptions, type SessionData } from "@/lib/session-config";
 import { safeEqual } from "@/lib/secure-compare";
 
 export type { SessionData } from "@/lib/session-config";
 export { getSessionOptions } from "@/lib/session-config";
 
 export async function getSession() {
-  return getIronSession(await cookies(), getSessionOptions());
+  return getIronSession<SessionData>(await cookies(), getSessionOptions());
 }
 
 export async function isAuthenticated(): Promise<boolean> {
