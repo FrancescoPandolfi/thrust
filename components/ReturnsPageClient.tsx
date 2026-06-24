@@ -2,7 +2,6 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
-import { useNavigationProgress } from "@/components/NavigationProgress";
 import { ReturnsBarChart } from "@/components/charts/ReturnsBarChart";
 import { ReturnsOverview } from "@/components/ReturnsOverview";
 import { ReturnsTable } from "@/components/ReturnsTable";
@@ -42,35 +41,46 @@ type Period = "daily" | "weekly";
 export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { start } = useNavigationProgress();
   const [period, setPeriod] = useState<Period>("daily");
 
   const currentRange = searchParams.get("range") ?? "3M";
 
   const setRange = useCallback(
     (label: string) => {
-      start();
       const params = new URLSearchParams(searchParams.toString());
       params.set("range", label);
       router.push(`/returns?${params.toString()}`);
     },
-    [router, searchParams, start],
+    [router, searchParams],
   );
 
-  const dailyChartData = daily.map((d) => ({
-    date: formatDate(d.date),
-    returnPct: d.returnPct,
-  }));
+  const dailyChartData = [...daily]
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .map((d) => ({
+      date: formatDate(d.date),
+      returnPct: d.returnPct,
+    }));
 
-  const weeklyChartData = weekly.map((w) => ({
-    week: formatDate(w.week),
-    returnPct: w.returnPct,
-  }));
+  const weeklyChartData = [...weekly]
+    .sort((a, b) => a.week.localeCompare(b.week))
+    .map((w) => ({
+      week: formatDate(w.week),
+      returnPct: w.returnPct,
+    }));
 
-  const chartData = chart.map((c) => ({
-    date: formatDate(c.date),
-    totalValueEur: c.totalValueEur,
-  }));
+  const chartPoints = new Map<string, number>();
+  for (const point of chart) {
+    chartPoints.set(point.date, point.totalValueEur);
+  }
+  if (today.endValueEur != null) {
+    chartPoints.set(today.date, today.endValueEur);
+  }
+  const chartData = [...chartPoints.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, totalValueEur]) => ({
+      date: formatDate(date),
+      totalValueEur,
+    }));
 
   return (
     <div className="space-y-6">

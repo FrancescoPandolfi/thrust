@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@source "../node_modules/@tremor/react/dist/**/*.{js,ts,jsx,tsx}";
 
 :root {
   --background: 9 9 11;
@@ -86,24 +85,6 @@ body {
 
 .nav-progress-bar {
   animation: nav-progress 1.1s ease-in-out infinite;
-}
-
-.tremor-Card {
-  background-color: rgb(24 24 27) !important;
-  border-color: rgb(39 39 42) !important;
-}
-
-.tremor-Title {
-  color: rgb(244 244 245) !important;
-}
-
-.tremor-Metric {
-  color: rgb(244 244 245) !important;
-}
-
-.tremor-TableCell,
-.tremor-TableHeaderCell {
-  color: rgb(212 212 216) !important;
 }
 
 @media (prefers-reduced-motion: no-preference) {

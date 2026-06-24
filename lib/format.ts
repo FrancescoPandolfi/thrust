@@ -21,6 +21,16 @@ const pctFormatter = new Intl.NumberFormat(DISPLAY_LOCALE, {
   maximumFractionDigits: 2,
 });
 
+/** Compact axis labels (232245 → "232.245 €") */
+export function formatEurAxis(value: number): string {
+  return new Intl.NumberFormat(DISPLAY_LOCALE, {
+    style: "currency",
+    currency: "EUR",
+    notation: "compact",
+    maximumFractionDigits: 1,
+  }).format(value);
+}
+
 export function formatEur(value: number): string {
   return eurFormatter.format(value);
 }

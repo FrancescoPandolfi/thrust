@@ -2,13 +2,14 @@
 
 import {
   createContext,
+  Suspense,
   useCallback,
   useContext,
   useEffect,
   useRef,
   useState,
 } from "react";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 
 type NavigationProgressContextValue = {
   start: () => void;
@@ -29,12 +30,14 @@ export function useNavigationProgress() {
   return context;
 }
 
-export function NavigationProgressProvider({
+function NavigationProgressProviderInner({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const routeKey = `${pathname}?${searchParams.toString()}`;
   const [active, setActive] = useState(false);
   const [visible, setVisible] = useState(false);
   const delayRef = useRef<number | null>(null);
@@ -64,7 +67,7 @@ export function NavigationProgressProvider({
 
   useEffect(() => {
     stop();
-  }, [pathname, stop]);
+  }, [routeKey, stop]);
 
   useEffect(() => {
     const onPopState = () => start();
@@ -86,5 +89,17 @@ export function NavigationProgressProvider({
         </div>
       ) : null}
     </NavigationProgressContext.Provider>
+  );
+}
+
+export function NavigationProgressProvider({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
+  return (
+    <Suspense fallback={null}>
+      <NavigationProgressProviderInner>{children}</NavigationProgressProviderInner>
+    </Suspense>
   );
 }

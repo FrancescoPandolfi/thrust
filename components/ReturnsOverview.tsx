@@ -19,7 +19,7 @@ type Props = {
 
 export function ReturnsOverview({ today, chart }: Props) {
   return (
-    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_min(100%,320px)] xl:grid-cols-[minmax(0,1fr)_380px] lg:items-stretch">
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_min(100%,360px)] xl:grid-cols-[minmax(0,1fr)_420px] lg:items-stretch">
       <ReturnsSummary {...today} />
       <PortfolioAreaChart data={chart} compact title="Portfolio value" />
     </div>
