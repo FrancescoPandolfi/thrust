@@ -1,4 +1,4 @@
-const MAX_LOGIN_ATTEMPTS = 5;
+const MAX_LOGIN_ATTEMPTS = 15;
 const LOCKOUT_MS = 15 * 60 * 1000;
 
 type LoginAttemptEntry = {
