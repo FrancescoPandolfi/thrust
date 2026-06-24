@@ -1,6 +1,7 @@
 import { computePortfolio, groupByCategory } from "@/lib/calculations";
 import { getDb } from "@/lib/db";
 import { getQuoteMap } from "@/lib/prices";
+import { positionToInstrument } from "@/lib/instruments";
 import { cashBalances, positions } from "@/lib/schema";
 
 export async function loadPortfolioData(refresh = false) {
@@ -10,8 +11,8 @@ export async function loadPortfolioData(refresh = false) {
     db.select().from(cashBalances),
   ]);
 
-  const symbols = posRows.map((p) => p.yahooSymbol);
-  const quotes = await getQuoteMap(symbols, { refresh });
+  const instruments = posRows.map(positionToInstrument);
+  const quotes = await getQuoteMap(instruments, { refresh });
   const { positions: computed, totals } = computePortfolio(
     posRows,
     cashRows,

@@ -1,10 +1,23 @@
 import { getDb } from "../lib/db";
-import { cashBalances, positions } from "../lib/schema";
+import { cashBalances, exchanges, positions, quoteSources } from "../lib/schema";
+
+const SEED_EXCHANGES = [
+  { micCode: "XAMS", yahooSuffix: "AS", name: "Euronext Amsterdam" },
+  { micCode: "XLON", yahooSuffix: "L", name: "London Stock Exchange" },
+  { micCode: "XPAR", yahooSuffix: "PA", name: "Euronext Paris" },
+  { micCode: "XMIL", yahooSuffix: "MI", name: "Borsa Italiana" },
+  { micCode: "XETR", yahooSuffix: "DE", name: "Xetra" },
+  { micCode: "XSES", yahooSuffix: "SG", name: "Singapore Exchange" },
+];
+
+const SEED_QUOTE_SOURCES = [
+  { id: "fx_eurusd", symbol: "EURUSD=X", provider: "frankfurter" },
+];
 
 const SEED_POSITIONS = [
   {
     isin: "IE00B4L5Y983",
-    googleTicker: "AMS:IWDA",
+    micCode: "XAMS",
     yahooSymbol: "IWDA.AS",
     title: "MSCI World",
     category: "equity_etf" as const,
@@ -14,7 +27,7 @@ const SEED_POSITIONS = [
   },
   {
     isin: "IE00B53SZB19",
-    googleTicker: "AMS:CNDX",
+    micCode: "XAMS",
     yahooSymbol: "CNDX.AS",
     title: "Nasdaq 100",
     category: "equity_etf" as const,
@@ -24,8 +37,8 @@ const SEED_POSITIONS = [
   },
   {
     isin: "IE00BKM4GZ66",
-    googleTicker: "LON:EIMI",
-    yahooSymbol: "EIMI.L",
+    micCode: "XMIL",
+    yahooSymbol: "EIMI.MI",
     title: "Emerging Markets",
     category: "equity_etf" as const,
     shares: "147.438376",
@@ -34,7 +47,7 @@ const SEED_POSITIONS = [
   },
   {
     isin: "IE00B5BMR087",
-    googleTicker: "AMS:CSPX",
+    micCode: "XAMS",
     yahooSymbol: "CSPX.AS",
     title: "S&P 500",
     category: "equity_etf" as const,
@@ -44,7 +57,7 @@ const SEED_POSITIONS = [
   },
   {
     isin: "LU1650488494",
-    googleTicker: "EPA:EGOV",
+    micCode: "XPAR",
     yahooSymbol: "EGOV.PA",
     title: "Euro Gov Bonds",
     category: "bond_etf" as const,
@@ -54,7 +67,7 @@ const SEED_POSITIONS = [
   },
   {
     isin: "LU1650488494",
-    googleTicker: "EPA:EM35",
+    micCode: "XMIL",
     yahooSymbol: "EM35.MI",
     title: "Govt Bond 3-5yr",
     category: "bond_etf" as const,
@@ -64,8 +77,8 @@ const SEED_POSITIONS = [
   },
   {
     isin: "IE00BF59RX87",
-    googleTicker: "LON:JRBE",
-    yahooSymbol: "JRBE.L",
+    micCode: "XETR",
+    yahooSymbol: "JREB.DE",
     title: "EUR Corporate Bond",
     category: "bond_etf" as const,
     shares: "39.255615",
@@ -74,8 +87,8 @@ const SEED_POSITIONS = [
   },
   {
     isin: "IE000RHYOR04",
-    googleTicker: "OTCMKTS:IIPUF",
-    yahooSymbol: "IIPUF",
+    micCode: "XSES",
+    yahooSymbol: "IE000RHYOR04.SG",
     title: "Ultrashort Bond",
     category: "bond_etf" as const,
     shares: "69.001349",
@@ -83,8 +96,8 @@ const SEED_POSITIONS = [
     sortOrder: "8",
   },
   {
-    googleTicker: "CURRENCY:BTCEUR",
-    yahooSymbol: "BTC-EUR",
+    symbol: "BTC-EUR",
+    coingeckoId: "bitcoin",
     title: "Bitcoin",
     category: "crypto" as const,
     shares: "0.158316",
@@ -92,8 +105,8 @@ const SEED_POSITIONS = [
     sortOrder: "9",
   },
   {
-    googleTicker: "CURRENCY:SOLEUR",
-    yahooSymbol: "SOL-EUR",
+    symbol: "SOL-EUR",
+    coingeckoId: "solana",
     title: "Solana",
     category: "crypto" as const,
     shares: "32.672547",
@@ -101,8 +114,8 @@ const SEED_POSITIONS = [
     sortOrder: "10",
   },
   {
-    googleTicker: "CURRENCY:ETHEUR",
-    yahooSymbol: "ETH-EUR",
+    symbol: "ETH-EUR",
+    coingeckoId: "ethereum",
     title: "Ethereum",
     category: "crypto" as const,
     shares: "0.924557",
@@ -113,6 +126,28 @@ const SEED_POSITIONS = [
 
 async function main() {
   const db = getDb();
+
+  console.log("Seeding exchanges...");
+  for (const exchange of SEED_EXCHANGES) {
+    await db
+      .insert(exchanges)
+      .values(exchange)
+      .onConflictDoUpdate({
+        target: exchanges.micCode,
+        set: { yahooSuffix: exchange.yahooSuffix, name: exchange.name },
+      });
+  }
+
+  console.log("Seeding quote sources...");
+  for (const source of SEED_QUOTE_SOURCES) {
+    await db
+      .insert(quoteSources)
+      .values(source)
+      .onConflictDoUpdate({
+        target: quoteSources.id,
+        set: { symbol: source.symbol, provider: source.provider },
+      });
+  }
 
   console.log("Seeding positions...");
   for (const pos of SEED_POSITIONS) {

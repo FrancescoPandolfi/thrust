@@ -1,5 +1,5 @@
+import { quoteKey, positionToInstrument, type Quote } from "./instruments";
 import type { CashBalance, Position } from "./schema";
-import type { Quote } from "./prices";
 
 export type ComputedPosition = Position & {
   price: number;
@@ -34,7 +34,7 @@ export function computePortfolio(
   const cashValueEur = cash.reduce((sum, c) => sum + toNum(c.amountEur), 0);
 
   const computed: ComputedPosition[] = positions.map((pos) => {
-    const quote = quotes.get(pos.yahooSymbol);
+    const quote = quotes.get(quoteKey(positionToInstrument(pos)));
     const price = quote?.price ?? 0;
     const priceEur = quote?.priceEur ?? 0;
     const shares = toNum(pos.shares);

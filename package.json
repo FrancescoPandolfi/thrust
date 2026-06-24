@@ -10,7 +10,6 @@
     "db:generate": "dotenv -e .env.local -- drizzle-kit generate",
     "db:push": "dotenv -e .env.local -- drizzle-kit push",
     "db:seed": "dotenv -e .env.local -- tsx scripts/seed.ts",
-    "db:update": "dotenv -e .env.local -- tsx scripts/update-db.ts",
     "db:check": "dotenv -e .env.local -- tsx scripts/check-db.ts"
   },
   "overrides": {
@@ -26,7 +25,9 @@
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "uuid": "^11.1.0"
+    "recharts": "^2.15.4",
+    "uuid": "^11.1.0",
+    "yahoo-finance2": "^3.15.3"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

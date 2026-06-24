@@ -1,7 +1,14 @@
+import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
+import { getDb } from "@/lib/db";
+import {
+  formatInstrumentLabel,
+  instrumentFromQuery,
+  normalizeInstrument,
+} from "@/lib/instruments";
 import { probeQuote } from "@/lib/prices";
-import { resolveYahooSymbol } from "@/lib/ticker-map";
+import { positions } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -11,42 +18,63 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const googleTicker = searchParams.get("googleTicker")?.trim();
-  const symbolParam = searchParams.get("symbol")?.trim();
+  const isin = searchParams.get("isin")?.trim() || null;
+  const symbol = searchParams.get("symbol")?.trim() || null;
+  const micCode = searchParams.get("mic_code")?.trim() || null;
   const refresh = searchParams.get("refresh") === "1";
 
-  let yahooSymbol = symbolParam ?? null;
-  let resolved = true;
-
-  if (googleTicker) {
-    yahooSymbol = resolveYahooSymbol(googleTicker);
-    resolved = yahooSymbol !== null;
-  }
-
-  if (!yahooSymbol) {
+  if (!isin && !symbol) {
     return NextResponse.json({
-      googleTicker: googleTicker ?? undefined,
-      yahooSymbol: null,
-      resolved: false,
+      isin: null,
+      symbol: null,
+      micCode: null,
       ok: false,
-      error: googleTicker
-        ? `Cannot resolve Yahoo symbol for "${googleTicker}"`
-        : "Provide googleTicker or symbol query param",
+      error: "Provide isin (+ mic_code) or symbol query param",
     });
   }
 
-  const result = await probeQuote(yahooSymbol, { refresh });
+  const db = getDb();
+  let matchedPosition = null;
+
+  if (isin) {
+    const rows = await db
+      .select()
+      .from(positions)
+      .where(
+        micCode
+          ? and(eq(positions.isin, isin.toUpperCase()), eq(positions.micCode, micCode.toUpperCase()))
+          : eq(positions.isin, isin.toUpperCase()),
+      )
+      .limit(1);
+    matchedPosition = rows[0] ?? null;
+  } else if (symbol) {
+    const rows = await db
+      .select()
+      .from(positions)
+      .where(eq(positions.symbol, symbol.toUpperCase()))
+      .limit(1);
+    matchedPosition = rows[0] ?? null;
+  }
+
+  const instrument = normalizeInstrument(
+    instrumentFromQuery({ isin, symbol, micCode }, matchedPosition),
+  );
+  const result = await probeQuote(instrument, { refresh });
 
   return NextResponse.json({
-    googleTicker: googleTicker ?? undefined,
-    yahooSymbol,
-    resolved,
+    isin: instrument.isin,
+    symbol: instrument.symbol,
+    micCode: instrument.micCode,
+    label: formatInstrumentLabel(instrument),
     provider: result.provider,
     ok: result.ok,
     error: result.ok ? undefined : result.error,
     quote: result.quote
       ? {
+          isin: result.quote.isin,
           symbol: result.quote.symbol,
+          micCode: result.quote.micCode,
+          label: formatInstrumentLabel(result.quote),
           price: result.quote.price,
           currency: result.quote.currency,
           priceEur: result.quote.priceEur,

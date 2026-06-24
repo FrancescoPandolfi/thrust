@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
 import { refreshPortfolioQuotes } from "@/lib/prices";
+import { positionToInstrument } from "@/lib/instruments";
 import { positions } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
@@ -20,9 +21,9 @@ export async function GET(request: Request) {
   try {
     const db = getDb();
     const rows = await db.select().from(positions);
-    const symbols = rows.map((p) => p.yahooSymbol);
+    const instruments = rows.map(positionToInstrument);
 
-    const result = await refreshPortfolioQuotes(symbols, {
+    const result = await refreshPortfolioQuotes(instruments, {
       force,
       bypassCooldown: true,
     });

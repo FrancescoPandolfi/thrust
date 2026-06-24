@@ -24,7 +24,7 @@ export default async function HomePage() {
         {needsRefresh && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
             Prices are missing or outdated. Click <strong>Refresh prices</strong>{" "}
-            once — if Yahoo rate-limits you, wait 15 minutes and try again.
+            once — if the data provider rate-limits you, wait a few minutes and try again.
           </div>
         )}
 
@@ -35,12 +35,9 @@ export default async function HomePage() {
           cashValueEur={totals.cashValueEur}
         />
 
-        <div className="grid gap-6 lg:grid-cols-3">
-          <div className="lg:col-span-2">
-            <PortfolioTable positions={positions} totals={totals} />
-          </div>
-          <AllocationDonut data={allocation} />
-        </div>
+        <PortfolioTable positions={positions} totals={totals} />
+
+        <AllocationDonut data={allocation} />
       </div>
     </AppShell>
   );

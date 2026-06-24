@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { allQuotesStale, getQuotes, hasMissingQuotes } from "@/lib/prices";
+import { positionToInstrument } from "@/lib/instruments";
 import { positions } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
@@ -18,14 +19,14 @@ export async function GET(request: Request) {
   try {
     const db = getDb();
     const rows = await db.select().from(positions);
-    const symbols = rows.map((p) => p.yahooSymbol);
-    const quotes = await getQuotes(symbols, { refresh, force });
+    const instruments = rows.map(positionToInstrument);
+    const quotes = await getQuotes(instruments, { refresh, force });
 
     if (refresh && hasMissingQuotes(quotes) && allQuotesStale(quotes)) {
       return NextResponse.json(
         {
           error:
-            "Yahoo Finance is rate-limiting requests. Wait 15 minutes, then try again.",
+            "Market data provider rate-limited requests. Wait a few minutes, then try again.",
           rateLimited: true,
           quotes,
         },

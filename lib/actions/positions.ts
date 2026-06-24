@@ -4,8 +4,8 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { isAuthenticated } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { normalizeInstrument } from "@/lib/instruments";
 import { positions } from "@/lib/schema";
-import { resolveYahooSymbol } from "@/lib/ticker-map";
 
 async function requireAuth() {
   if (!(await isAuthenticated())) {
@@ -35,29 +35,47 @@ export async function updatePositionLoadValue(id: string, loadValueEur: number) 
 }
 
 export async function addPosition(data: {
-  googleTicker: string;
-  yahooSymbol?: string;
+  isin?: string;
+  symbol?: string;
+  micCode?: string | null;
+  yahooSymbol?: string | null;
+  coingeckoId?: string | null;
   title: string;
   category: "equity_etf" | "bond_etf" | "crypto";
   shares: number;
   loadValueEur: number;
-  isin?: string;
 }) {
   await requireAuth();
-  const yahooSymbol =
-    data.yahooSymbol ?? resolveYahooSymbol(data.googleTicker);
-  if (!yahooSymbol) {
-    throw new Error("Unable to resolve Yahoo symbol");
+  const instrument = normalizeInstrument({
+    isin: data.category === "crypto" ? null : (data.isin ?? null),
+    micCode: data.category === "crypto" ? null : (data.micCode ?? null),
+    symbol: data.category === "crypto" ? (data.symbol ?? null) : null,
+    yahooSymbol: data.yahooSymbol ?? null,
+    coingeckoId: data.coingeckoId ?? null,
+    category: data.category,
+  });
+
+  if (data.category === "crypto" && !instrument.symbol) {
+    throw new Error("Symbol is required for crypto");
   }
+  if (data.category === "crypto" && !instrument.coingeckoId) {
+    throw new Error("CoinGecko ID is required for crypto");
+  }
+  if (data.category !== "crypto" && !instrument.isin) {
+    throw new Error("ISIN is required");
+  }
+
   const db = getDb();
   await db.insert(positions).values({
-    googleTicker: data.googleTicker,
-    yahooSymbol,
+    isin: instrument.isin,
+    symbol: instrument.symbol,
+    micCode: instrument.micCode,
+    yahooSymbol: instrument.yahooSymbol,
+    coingeckoId: instrument.coingeckoId,
     title: data.title,
     category: data.category,
     shares: String(data.shares),
     loadValueEur: String(data.loadValueEur),
-    isin: data.isin ?? null,
   });
   revalidatePath("/");
 }

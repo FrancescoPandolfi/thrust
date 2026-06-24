@@ -3,6 +3,7 @@ import {
   numeric,
   pgEnum,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   unique,
@@ -17,11 +18,25 @@ export const categoryEnum = pgEnum("category", [
 
 export const snapshotTypeEnum = pgEnum("snapshot_type", ["open", "close"]);
 
+export const exchanges = pgTable("exchanges", {
+  micCode: text("mic_code").primaryKey(),
+  yahooSuffix: text("yahoo_suffix").notNull(),
+  name: text("name"),
+});
+
+export const quoteSources = pgTable("quote_sources", {
+  id: text("id").primaryKey(),
+  symbol: text("symbol").notNull(),
+  provider: text("provider").notNull(),
+});
+
 export const positions = pgTable("positions", {
   id: uuid("id").primaryKey().defaultRandom(),
   isin: text("isin"),
-  googleTicker: text("google_ticker").notNull(),
-  yahooSymbol: text("yahoo_symbol").notNull(),
+  symbol: text("symbol"),
+  micCode: text("mic_code"),
+  yahooSymbol: text("yahoo_symbol"),
+  coingeckoId: text("coingecko_id"),
   title: text("title").notNull(),
   category: categoryEnum("category").notNull(),
   shares: numeric("shares", { precision: 18, scale: 8 }).notNull(),
@@ -38,12 +53,17 @@ export const cashBalances = pgTable("cash_balances", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
-export const priceCache = pgTable("price_cache", {
-  yahooSymbol: text("yahoo_symbol").primaryKey(),
-  price: numeric("price", { precision: 18, scale: 8 }).notNull(),
-  currency: text("currency").notNull(),
-  fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
-});
+export const priceCache = pgTable(
+  "price_cache",
+  {
+    isin: text("isin").notNull(),
+    micCode: text("mic_code").notNull().default(""),
+    price: numeric("price", { precision: 18, scale: 8 }).notNull(),
+    currency: text("currency").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [primaryKey({ columns: [table.isin, table.micCode] })],
+);
 
 export const dailySnapshots = pgTable(
   "daily_snapshots",
@@ -69,6 +89,8 @@ export const dailyReturns = pgTable("daily_returns", {
 });
 
 export type Position = typeof positions.$inferSelect;
+export type Exchange = typeof exchanges.$inferSelect;
+export type QuoteSource = typeof quoteSources.$inferSelect;
 export type CashBalance = typeof cashBalances.$inferSelect;
 export type DailySnapshot = typeof dailySnapshots.$inferSelect;
 export type DailyReturn = typeof dailyReturns.$inferSelect;

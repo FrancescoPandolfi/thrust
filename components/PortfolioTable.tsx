@@ -1,14 +1,10 @@
 "use client";
 
-import { Fragment, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import {
-  updatePositionLoadValue,
-  updatePositionShares,
-} from "@/lib/actions/positions";
+import { Fragment, useState } from "react";
 import type { ComputedPosition } from "@/lib/calculations";
 import { CATEGORY_LABELS, groupByCategory } from "@/lib/calculations";
-import { formatEur, formatNumber, formatPct, parseDecimal } from "@/lib/format";
+import { formatEur, formatPct } from "@/lib/format";
+import { PositionEditModal } from "./PositionEditModal";
 import { PositionRow } from "./PositionRow";
 
 type Props = {
@@ -23,141 +19,94 @@ type Props = {
 
 export function PortfolioTable({ positions, totals }: Props) {
   const groups = groupByCategory(positions);
+  const [editingPosition, setEditingPosition] = useState<ComputedPosition | null>(
+    null,
+  );
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[900px] text-sm">
-          <thead>
-            <tr className="border-b border-zinc-800 bg-zinc-900 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">
-              <th className="px-4 py-3">ISIN</th>
-              <th className="px-4 py-3">Ticker</th>
-              <th className="px-4 py-3">Title</th>
-              <th className="px-4 py-3 text-right">%</th>
-              <th className="px-4 py-3 text-right">Price (EUR)</th>
-              <th className="px-4 py-3 text-right">Shares</th>
-              <th className="px-4 py-3 text-right">Load value</th>
-              <th className="px-4 py-3 text-right">Value EUR</th>
-              <th className="px-4 py-3 text-right">P/L %</th>
-              <th className="px-4 py-3 text-right">P/L EUR</th>
-            </tr>
-          </thead>
-          <tbody>
-            {(["equity_etf", "bond_etf", "crypto"] as const).map((cat) => {
-              const items = groups[cat];
-              if (!items?.length) return null;
-              return (
-                <Fragment key={cat}>
-                  <tr className="bg-zinc-800/40">
-                    <td
-                      colSpan={10}
-                      className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-400"
-                    >
-                      {CATEGORY_LABELS[cat]}
-                    </td>
-                  </tr>
-                  {items.map((pos) => (
-                    <PositionRow key={pos.id} position={pos} />
-                  ))}
-                </Fragment>
-              );
-            })}
-            <tr className="border-t border-zinc-700 bg-zinc-800/60 font-semibold">
-              <td colSpan={6} className="px-4 py-3 text-zinc-200">
-                Total (without cash)
-              </td>
-              <td className="px-4 py-3 text-right font-mono tabular-nums text-zinc-200">
-                {formatEur(totals.totalLoadEur)}
-              </td>
-              <td className="px-4 py-3 text-right font-mono tabular-nums text-zinc-100">
-                {formatEur(totals.positionsValueEur)}
-              </td>
-              <td
-                className={`px-4 py-3 text-right font-mono tabular-nums ${
-                  totals.totalPlPct >= 0 ? "text-emerald-400" : "text-rose-400"
-                }`}
-              >
-                {totals.totalPlPct >= 0 ? "+" : ""}
-                {formatPct(totals.totalPlPct)}
-              </td>
-              <td
-                className={`px-4 py-3 text-right font-mono tabular-nums ${
-                  totals.totalPlEur >= 0 ? "text-emerald-400" : "text-rose-400"
-                }`}
-              >
-                {totals.totalPlEur >= 0 ? "+" : ""}
-                {formatEur(totals.totalPlEur)}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+    <>
+      <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[900px] text-sm">
+            <thead>
+              <tr className="border-b border-zinc-800 bg-zinc-900 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">
+                <th className="px-4 py-3">ISIN / Symbol</th>
+                <th className="px-4 py-3">Title</th>
+                <th className="px-4 py-3 text-right">%</th>
+                <th className="px-4 py-3 text-right">Price (EUR)</th>
+                <th className="px-4 py-3 text-right">Shares</th>
+                <th className="px-4 py-3 text-right">Load value</th>
+                <th className="px-4 py-3 text-right">Value EUR</th>
+                <th className="px-4 py-3 text-right">P/L %</th>
+                <th className="px-4 py-3 text-right">P/L EUR</th>
+                <th className="px-4 py-3 text-right">
+                  <span className="sr-only">Actions</span>
+                </th>
+              </tr>
+            </thead>
+            <tbody>
+              {(["equity_etf", "bond_etf", "crypto"] as const).map((cat) => {
+                const items = groups[cat];
+                if (!items?.length) return null;
+                return (
+                  <Fragment key={cat}>
+                    <tr className="bg-zinc-800/40">
+                      <td
+                        colSpan={10}
+                        className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-400"
+                      >
+                        {CATEGORY_LABELS[cat]}
+                      </td>
+                    </tr>
+                    {items.map((pos) => (
+                      <PositionRow
+                        key={pos.id}
+                        position={pos}
+                        onEdit={setEditingPosition}
+                      />
+                    ))}
+                  </Fragment>
+                );
+              })}
+              <tr className="border-t border-zinc-700 bg-zinc-800/60 font-semibold">
+                <td colSpan={5} className="px-4 py-3 text-zinc-200">
+                  Total (without cash)
+                </td>
+                <td className="px-4 py-3 text-right font-mono tabular-nums text-zinc-200">
+                  {formatEur(totals.totalLoadEur)}
+                </td>
+                <td className="px-4 py-3 text-right font-mono tabular-nums text-zinc-100">
+                  {formatEur(totals.positionsValueEur)}
+                </td>
+                <td
+                  className={`px-4 py-3 text-right font-mono tabular-nums ${
+                    totals.totalPlPct >= 0 ? "text-emerald-400" : "text-rose-400"
+                  }`}
+                >
+                  {totals.totalPlPct >= 0 ? "+" : ""}
+                  {formatPct(totals.totalPlPct)}
+                </td>
+                <td
+                  className={`px-4 py-3 text-right font-mono tabular-nums ${
+                    totals.totalPlEur >= 0 ? "text-emerald-400" : "text-rose-400"
+                  }`}
+                >
+                  {totals.totalPlEur >= 0 ? "+" : ""}
+                  {formatEur(totals.totalPlEur)}
+                </td>
+                <td className="px-4 py-3" />
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+
+      {editingPosition && (
+        <PositionEditModal
+          position={editingPosition}
+          onClose={() => setEditingPosition(null)}
+        />
+      )}
+    </>
   );
 }
-
-export function EditableCell({
-  value,
-  onSave,
-  format = (v: number) => formatNumber(v),
-}: {
-  value: number;
-  onSave: (v: number) => Promise<void>;
-  format?: (v: number) => string;
-}) {
-  const router = useRouter();
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState(format(value));
-  const [saving, setSaving] = useState(false);
-  const [displayValue, setDisplayValue] = useState(value);
-
-  useEffect(() => {
-    setDisplayValue(value);
-  }, [value]);
-
-  async function save() {
-    setSaving(true);
-    try {
-      const parsed = parseDecimal(draft);
-      await onSave(parsed);
-      setDisplayValue(parsed);
-      setEditing(false);
-      router.refresh();
-    } finally {
-      setSaving(false);
-    }
-  }
-
-  if (!editing) {
-    return (
-      <button
-        type="button"
-        onClick={() => {
-          setDraft(format(displayValue));
-          setEditing(true);
-        }}
-        className="font-mono tabular-nums text-zinc-200 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
-        title="Click to edit"
-      >
-        {format(displayValue)}
-      </button>
-    );
-  }
-
-  return (
-    <input
-      autoFocus
-      value={draft}
-      disabled={saving}
-      onChange={(e) => setDraft(e.target.value)}
-      onBlur={save}
-      onKeyDown={(e) => {
-        if (e.key === "Enter") save();
-        if (e.key === "Escape") setEditing(false);
-      }}
-      className="min-w-[7rem] rounded border border-zinc-600 bg-zinc-800 px-2 py-0.5 text-right font-mono tabular-nums text-zinc-100 focus:border-blue-500 focus:outline-none"
-    />
-  );
-}
-
-export { updatePositionShares, updatePositionLoadValue };
