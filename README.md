@@ -30,9 +30,10 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
    | Variable | Description |
    |----------|-------------|
    | `DATABASE_URL` | Neon Postgres connection string |
-   | `APP_PASSWORD` | Login password (plain text in dev; bcrypt hash required in production) |
    | `SESSION_SECRET` | Random string, 32+ characters |
    | `CRON_SECRET` | Bearer token for cron snapshot endpoint |
+   | `SEED_USER_EMAIL` | First account email (seed script only) |
+   | `SEED_USER_PASSWORD` | First account password (seed script only; stored hashed in DB) |
 
 3. Push the database schema:
 
@@ -40,11 +41,13 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
    npm run db:push
    ```
 
-4. Seed reference data (exchanges and FX quote source):
+4. Seed reference data and create your login account:
 
    ```bash
    npm run db:seed
    ```
+
+   Set `SEED_USER_EMAIL` and `SEED_USER_PASSWORD` in `.env.local` before running seed. The password is hashed with bcrypt and stored in the `users` table. Re-running seed does not overwrite an existing account.
 
    Add your positions from the portfolio UI after signing in.
 
@@ -62,7 +65,6 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
 2. Import the project in [Vercel](https://vercel.com/new).
 3. Create a **Neon Postgres** database (Vercel Storage integration or [neon.tech](https://neon.tech)) and set `DATABASE_URL`.
 4. Add environment variables in the Vercel project settings:
-   - `APP_PASSWORD`
    - `SESSION_SECRET`
    - `CRON_SECRET`
 5. Deploy. On first deploy, run migrations:
@@ -73,10 +75,10 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
 
    Or use the Vercel CLI against your production database.
 
-6. Seed reference data on production (if not already present):
+6. Seed reference data and the first user on production (if not already present):
 
    ```bash
-   DATABASE_URL="..." npm run db:seed
+   DATABASE_URL="..." SEED_USER_EMAIL="..." SEED_USER_PASSWORD="..." npm run db:seed
    ```
 
 7. **Vercel Cron** jobs are configured in `vercel.json`:
@@ -96,7 +98,7 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
 | `npm run build` | Production build |
 | `npm run db:generate` | Generate Drizzle migrations |
 | `npm run db:push` | Push schema to database |
-| `npm run db:seed` | Seed exchanges and FX quote source |
+| `npm run db:seed` | Seed exchanges, FX quote source, and first user |
 
 ## Pages
 
@@ -104,7 +106,7 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
 - `/cash` — Cash balance management
 - `/returns` — Daily/weekly return charts and history
 - `/errors` — Production error log dashboard
-- `/login` — Password login
+- `/login` — Email + password login
 
 ## API
 

@@ -97,6 +97,15 @@ export const productionErrors = pgTable("production_errors", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+export const users = pgTable("users", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").notNull().unique(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export type Position = typeof positions.$inferSelect;
 export type Exchange = typeof exchanges.$inferSelect;
 export type QuoteSource = typeof quoteSources.$inferSelect;
@@ -106,3 +115,4 @@ export type DailyReturn = typeof dailyReturns.$inferSelect;
 export type Category = (typeof categoryEnum.enumValues)[number];
 export type SnapshotType = (typeof snapshotTypeEnum.enumValues)[number];
 export type ProductionError = typeof productionErrors.$inferSelect;
+export type User = typeof users.$inferSelect;

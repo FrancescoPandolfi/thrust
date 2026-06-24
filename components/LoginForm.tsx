@@ -59,6 +59,23 @@ export function LoginForm() {
           <form action={handleSubmit} className="space-y-4">
             <div>
               <label
+                htmlFor="email"
+                className="mb-1.5 block text-sm font-medium text-zinc-400"
+              >
+                Email
+              </label>
+              <input
+                id="email"
+                name="email"
+                type="email"
+                required
+                autoComplete="email"
+                className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
+                placeholder="you@example.com"
+              />
+            </div>
+            <div>
+              <label
                 htmlFor="password"
                 className="mb-1.5 block text-sm font-medium text-zinc-400"
               >

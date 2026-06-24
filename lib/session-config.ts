@@ -3,6 +3,7 @@ import { getSessionSecret } from "@/lib/env";
 
 export type SessionData = {
   isLoggedIn: boolean;
+  userId?: string;
 };
 
 let cachedSessionOptions: SessionOptions | null = null;

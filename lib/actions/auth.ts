@@ -31,12 +31,13 @@ export async function loginAction(
     };
   }
 
+  const email = formData.get("email")?.toString() ?? "";
   const password = formData.get("password")?.toString() ?? "";
-  const success = await doLogin(password);
+  const success = await doLogin(email, password);
 
   if (!success) {
     recordLoginFailure(ip);
-    return { error: "Invalid password" };
+    return { error: "Invalid email or password" };
   }
 
   clearLoginAttempts(ip);

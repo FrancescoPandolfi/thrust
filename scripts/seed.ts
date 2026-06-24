@@ -1,5 +1,6 @@
 import { getDb } from "../lib/db";
-import { exchanges, quoteSources } from "../lib/schema";
+import { hashPassword } from "../lib/password";
+import { exchanges, quoteSources, users } from "../lib/schema";
 
 const SEED_EXCHANGES = [
   { micCode: "XAMS", yahooSuffix: "AS", name: "Euronext Amsterdam" },
@@ -37,6 +38,31 @@ async function main() {
         target: quoteSources.id,
         set: { symbol: source.symbol, provider: source.provider },
       });
+  }
+
+  const seedEmail = process.env.SEED_USER_EMAIL?.trim().toLowerCase();
+  const seedPassword = process.env.SEED_USER_PASSWORD?.trim();
+
+  if (seedEmail && seedPassword) {
+    console.log(`Seeding user ${seedEmail}...`);
+    const inserted = await db
+      .insert(users)
+      .values({
+        email: seedEmail,
+        passwordHash: hashPassword(seedPassword),
+      })
+      .onConflictDoNothing()
+      .returning({ id: users.id });
+
+    if (inserted.length > 0) {
+      console.log("User created.");
+    } else {
+      console.log("User already exists, skipped.");
+    }
+  } else {
+    console.log(
+      "Skipping user seed (set SEED_USER_EMAIL and SEED_USER_PASSWORD to create the first account).",
+    );
   }
 
   console.log("Reference data seed complete.");

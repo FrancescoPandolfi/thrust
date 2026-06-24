@@ -19,7 +19,7 @@ export async function middleware(request: NextRequest) {
     getSessionOptions(),
   );
 
-  if (!session.isLoggedIn) {
+  if (!session.isLoggedIn || typeof session.userId !== "string") {
     const loginUrl = new URL("/login", request.url);
     loginUrl.searchParams.set("from", pathname);
     return applySecurityHeaders(NextResponse.redirect(loginUrl));

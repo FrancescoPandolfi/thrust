@@ -20,17 +20,7 @@ export function getSessionSecret(): string {
 
 export function validateEnv(): void {
   getSessionSecret();
-  requireEnv("APP_PASSWORD");
   requireEnv("CRON_SECRET");
-
-  if (process.env.NODE_ENV === "production") {
-    const appPassword = requireEnv("APP_PASSWORD");
-    if (!appPassword.startsWith("$2")) {
-      throw new Error(
-        "APP_PASSWORD must be a bcrypt hash in production",
-      );
-    }
-  }
 }
 
 export function productionErrorMessage(
