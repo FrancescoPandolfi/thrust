@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
+import { logProductionError } from "@/lib/errors";
 import { getDb } from "@/lib/db";
 import { allQuotesStale, getQuotes, hasMissingQuotes } from "@/lib/prices";
 import { positionToInstrument } from "@/lib/instruments";
@@ -37,6 +38,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ quotes });
   } catch (error) {
     console.error(error);
+    await logProductionError("api/quotes", error);
     return NextResponse.json(
       {
         error:

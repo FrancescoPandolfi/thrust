@@ -1,7 +1,7 @@
 "use client";
 
 import { BadgeDelta, Card, Flex, Metric, Text } from "@tremor/react";
-import { formatEur, formatPct } from "@/lib/format";
+import { formatDate, formatEur, formatPct } from "@/lib/format";
 
 type Props = {
   date: string;
@@ -24,7 +24,7 @@ export function ReturnsSummary({
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       <Card>
         <Text>Date</Text>
-        <Metric className="font-mono text-xl">{date}</Metric>
+        <Metric className="font-mono text-xl">{formatDate(date)}</Metric>
         {inProgress && (
           <Text className="mt-1 text-amber-400">Day in progress</Text>
         )}

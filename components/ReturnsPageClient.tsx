@@ -12,6 +12,7 @@ import type {
   DailyReturnRow,
   WeeklyReturnRow,
 } from "@/lib/returns";
+import { formatDate } from "@/lib/format";
 
 type TodaySummary = {
   date: string;
@@ -54,13 +55,18 @@ export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
   );
 
   const dailyChartData = daily.map((d) => ({
-    date: d.date,
+    date: formatDate(d.date),
     returnPct: d.returnPct,
   }));
 
   const weeklyChartData = weekly.map((w) => ({
-    week: w.week,
+    week: formatDate(w.week),
     returnPct: w.returnPct,
+  }));
+
+  const chartData = chart.map((c) => ({
+    date: formatDate(c.date),
+    totalValueEur: c.totalValueEur,
   }));
 
   return (
@@ -74,9 +80,9 @@ export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
             key={r.label}
             type="button"
             onClick={() => setRange(r.label)}
-            className={`rounded-md px-3 py-1 text-sm font-medium transition-colors ${
+            className={`cursor-pointer rounded-md px-3 py-1 text-sm font-medium transition-colors ${
               currentRange === r.label
-                ? "bg-zinc-800 text-blue-400"
+                ? "bg-zinc-800 text-accent"
                 : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
             }`}
           >
@@ -98,7 +104,7 @@ export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
                 indexKey="date"
                 title="Daily returns %"
               />
-              <PortfolioAreaChart data={chart} />
+              <PortfolioAreaChart data={chartData} />
             </div>
           </TabPanel>
           <TabPanel>

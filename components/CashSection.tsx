@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import {
   addCashBalance,
   deleteCashBalance,
@@ -42,7 +42,7 @@ function EditableAmount({
           setDraft(String(value));
           setEditing(true);
         }}
-        className="font-mono tabular-nums text-zinc-100 hover:text-blue-400"
+        className="font-mono tabular-nums text-zinc-100 hover:text-accent"
       >
         {formatEur(value)}
       </button>
@@ -71,10 +71,16 @@ export function CashSection({ balances }: Props) {
     0,
   );
 
-  async function handleAdd(formData: FormData) {
-    const label = formData.get("label")?.toString() ?? "Cash";
-    const amount = parseDecimal(formData.get("amount")?.toString() ?? "0");
-    await addCashBalance(label, amount);
+  const [addLabel, setAddLabel] = useState("");
+  const [addAmount, setAddAmount] = useState("");
+  const canAdd = addLabel.trim() !== "" && addAmount.trim() !== "";
+
+  async function handleAdd(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!canAdd) return;
+    await addCashBalance(addLabel.trim(), parseDecimal(addAmount));
+    setAddLabel("");
+    setAddAmount("");
   }
 
   return (
@@ -125,11 +131,13 @@ export function CashSection({ balances }: Props) {
         </table>
       </div>
 
-      <form action={handleAdd} className="flex flex-wrap items-end gap-3">
+      <form onSubmit={handleAdd} className="flex flex-wrap items-end gap-3">
         <div>
           <label className="mb-1 block text-xs text-zinc-400">Label</label>
           <input
             name="label"
+            value={addLabel}
+            onChange={(e) => setAddLabel(e.target.value)}
             placeholder="Broker cash"
             className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100"
           />
@@ -140,13 +148,16 @@ export function CashSection({ balances }: Props) {
             name="amount"
             type="number"
             step="0.01"
+            value={addAmount}
+            onChange={(e) => setAddAmount(e.target.value)}
             placeholder="0"
             className="rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100"
           />
         </div>
         <button
           type="submit"
-          className="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-white"
+          disabled={!canAdd}
+          className="btn-primary cursor-pointer rounded-lg px-4 py-2 text-sm disabled:!cursor-pointer"
         >
           Add balance
         </button>

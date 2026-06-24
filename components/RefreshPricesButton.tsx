@@ -38,7 +38,7 @@ export function RefreshPricesButton() {
         type="button"
         onClick={refresh}
         disabled={loading}
-        className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50 disabled:opacity-50"
+        className="rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:opacity-50"
       >
         {loading ? "Refreshing…" : "Refresh prices"}
       </button>

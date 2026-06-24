@@ -9,12 +9,13 @@
   --muted: 161 161 170;
   --gain: 52 211 153;
   --loss: 251 113 133;
-  --accent: 96 165 250;
+  --accent: #DFFF00;
 }
 
 @theme inline {
   --color-background: rgb(var(--background));
   --color-foreground: rgb(244 244 245);
+  --color-accent: var(--accent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -27,6 +28,28 @@ body {
   background: rgb(var(--background));
   color: rgb(244 244 245);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+}
+
+.btn-primary {
+  background-color: #DFFF00;
+  color: #09090b;
+  font-weight: 500;
+  cursor: pointer;
+  transition: filter 150ms ease;
+}
+
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(0.95);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-primary:focus-visible {
+  outline: 2px solid #DFFF00;
+  outline-offset: 2px;
 }
 
 * {

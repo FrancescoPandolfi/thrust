@@ -16,7 +16,7 @@ export function PortfolioAreaChart({ data }: Props) {
         data={data}
         index="date"
         categories={["totalValueEur"]}
-        colors={["blue"]}
+        colors={["#DFFF00"]}
         valueFormatter={(v) => formatEur(v)}
         yAxisWidth={80}
       />

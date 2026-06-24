@@ -1,6 +1,7 @@
 import { and, eq, or } from "drizzle-orm";
 import YahooFinance from "yahoo-finance2";
 import { getDb } from "./db";
+import { logProductionError } from "./errors";
 import {
   cacheIsin,
   cacheMicCode,
@@ -123,6 +124,7 @@ async function loadFxRates(
     return await fetchFrankfurterRates();
   } catch (error) {
     console.error("Frankfurter FX fetch failed:", error);
+    void logProductionError("prices/frankfurter", error);
     const fxInstrument = createFxInstrument(ctx);
     const cachedFx = cachedQuotes.get(quoteKey(fxInstrument));
     return {
@@ -315,6 +317,7 @@ async function fetchEtfQuotes(
     } catch (error) {
       console.error(`Yahoo quote failed for ${yahooSymbol}:`, error);
       if (error instanceof Error && error.message.includes("rate limit")) {
+        void logProductionError("prices/yahoo", error, { yahooSymbol });
         break;
       }
     }
@@ -377,6 +380,7 @@ async function fetchAllQuotes(
     results.set(quoteKey(fxInstrument), fxQuote);
   } catch (error) {
     console.error("Frankfurter FX fetch failed:", error);
+    void logProductionError("prices/frankfurter", error);
   }
 
   const fx = await loadFxRates(results, ctx);
@@ -392,6 +396,9 @@ async function fetchAllQuotes(
       }
     } catch (error) {
       console.error("CoinGecko fetch failed:", error);
+      void logProductionError("prices/coingecko", error, {
+        instruments: cryptoInstruments.length,
+      });
     }
   }
 
@@ -518,6 +525,7 @@ export async function getQuotes(
       refreshed = result.refreshed;
     } catch (error) {
       console.error("Quote refresh failed, using cached prices:", error);
+      void logProductionError("prices/refresh", error);
     }
   }
 

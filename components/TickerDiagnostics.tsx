@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { formatEur, formatNumber } from "@/lib/format";
+import { formatEur, formatNumber, formatDateTime } from "@/lib/format";
 
 type QuoteSnapshot = {
   isin: string | null;
@@ -65,12 +65,6 @@ function statusBadge(ok: boolean, stale?: boolean) {
   );
 }
 
-function formatFetchedAt(iso: string): string {
-  return new Date(iso).toLocaleString("en-EU", {
-    dateStyle: "short",
-    timeStyle: "medium",
-  });
-}
 
 function formatMicCode(micCode: string | null): string {
   return micCode ?? "—";
@@ -190,24 +184,24 @@ export function TickerDiagnostics({ positions: initial }: Props) {
             value={isinInput}
             onChange={(e) => setIsinInput(e.target.value)}
             placeholder="ISIN"
-            className="min-w-[160px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-blue-500 focus:outline-none"
+            className="min-w-[160px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
           />
           <input
             value={micInput}
             onChange={(e) => setMicInput(e.target.value)}
             placeholder="MIC (optional)"
-            className="min-w-[120px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-blue-500 focus:outline-none"
+            className="min-w-[120px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
           />
           <input
             value={symbolInput}
             onChange={(e) => setSymbolInput(e.target.value)}
             placeholder="Symbol (crypto)"
-            className="min-w-[120px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-blue-500 focus:outline-none"
+            className="min-w-[120px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
           />
           <button
             type="submit"
             disabled={customLoading || (!isinInput.trim() && !symbolInput.trim())}
-            className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-500 disabled:opacity-50"
+            className="btn-primary rounded-lg px-4 py-2 text-sm"
           >
             {customLoading ? "Fetching…" : "Fetch live"}
           </button>
@@ -243,7 +237,7 @@ export function TickerDiagnostics({ positions: initial }: Props) {
                   </p>
                 )}
                 <p className="text-xs text-zinc-400">
-                  {formatFetchedAt(customResult.quote.fetchedAt)}
+                  {formatDateTime(customResult.quote.fetchedAt)}
                 </p>
               </>
             ) : (
@@ -301,7 +295,7 @@ export function TickerDiagnostics({ positions: initial }: Props) {
                   </td>
                   <td className="px-4 py-2.5 text-xs text-zinc-500">
                     {row.quote
-                      ? formatFetchedAt(row.quote.fetchedAt)
+                      ? formatDateTime(row.quote.fetchedAt)
                       : (row.error ?? "—")}
                   </td>
                   <td className="px-4 py-2.5 text-right">
@@ -309,7 +303,7 @@ export function TickerDiagnostics({ positions: initial }: Props) {
                       type="button"
                       onClick={() => liveFetch(row)}
                       disabled={loadingId === row.id}
-                      className="rounded-md bg-zinc-800 px-2.5 py-1 text-xs text-zinc-200 hover:bg-zinc-700 disabled:opacity-50"
+                      className="btn-primary rounded-md px-2.5 py-1 text-xs"
                     >
                       {loadingId === row.id ? "…" : "Fetch live"}
                     </button>

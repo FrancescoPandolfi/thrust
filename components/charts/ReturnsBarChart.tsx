@@ -1,6 +1,7 @@
 "use client";
 
 import { BarChart, Card, Title } from "@tremor/react";
+import { formatPct } from "@/lib/format";
 
 type Props = {
   data: { date: string; returnPct: number }[] | { week: string; returnPct: number }[];
@@ -18,7 +19,7 @@ export function ReturnsBarChart({ data, indexKey, title }: Props) {
         index={indexKey}
         categories={["returnPct"]}
         colors={["emerald"]}
-        valueFormatter={(v) => `${(v * 100).toFixed(2)}%`}
+        valueFormatter={(v) => formatPct(v)}
         yAxisWidth={56}
       />
     </Card>

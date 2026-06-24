@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { getDb } from "@/lib/db";
+import { logProductionError } from "@/lib/errors";
 import { refreshPortfolioQuotes } from "@/lib/prices";
 import { positionToInstrument } from "@/lib/instruments";
 import { positions } from "@/lib/schema";
@@ -35,6 +36,7 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error(error);
+    await logProductionError("cron/prices", error, { force });
     return NextResponse.json(
       {
         error:

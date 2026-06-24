@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
+import { logProductionError } from "@/lib/errors";
 import {
   getDailyReturns,
   getWeeklyReturns,
@@ -29,6 +30,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ period: "day", data: daily, chart });
   } catch (error) {
     console.error(error);
+    await logProductionError("api/returns", error, { period, from, to });
     return NextResponse.json(
       { error: "Failed to fetch returns" },
       { status: 500 },

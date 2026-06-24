@@ -78,7 +78,10 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
    ```
 
 7. **Vercel Cron** jobs are configured in `vercel.json`:
-   - **08:00 UTC** — open snapshot (~09:00 CET)
+   Vercel Cron jobs (UTC), prices 5 min before each snapshot as cache fallback:
+   - **06:35 UTC** — price refresh
+   - **06:40 UTC** — open snapshot (~07:40 CET)
+   - **21:55 UTC** — price refresh
    - **22:00 UTC** — close snapshot (~23:00 CET)
 
    Vercel sends `Authorization: Bearer <CRON_SECRET>` automatically when `CRON_SECRET` is set.
@@ -98,6 +101,7 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
 - `/` — Portfolio dashboard with metrics, allocation donut, and editable positions table
 - `/cash` — Cash balance management
 - `/returns` — Daily/weekly return charts and history
+- `/errors` — Production error log dashboard
 - `/login` — Password login
 
 ## API

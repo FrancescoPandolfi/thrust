@@ -1,4 +1,4 @@
-import { formatEur, formatPct } from "@/lib/format";
+import { formatDate, formatEur, formatPct } from "@/lib/format";
 import type { DailyReturnRow } from "@/lib/returns";
 
 type Props = {
@@ -36,7 +36,7 @@ export function ReturnsTable({ rows }: Props) {
                   className="border-b border-zinc-800/60 even:bg-zinc-900/50"
                 >
                   <td className="px-4 py-2.5 font-mono text-zinc-300">
-                    {row.date}
+                    {formatDate(row.date)}
                   </td>
                   <td className="px-4 py-2.5 text-right font-mono tabular-nums text-zinc-400">
                     {formatEur(row.startValueEur)}

@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComputedPosition } from "@/lib/calculations";
-import { formatEur, formatNumber, formatPct } from "@/lib/format";
+import { formatEur, formatNumber, formatPercentPoints, formatPct } from "@/lib/format";
 
 type Props = {
   position: ComputedPosition;
@@ -29,7 +29,7 @@ export function PositionRow({ position, onEdit }: Props) {
       </td>
       <td className="px-4 py-2.5 text-zinc-200">{position.title}</td>
       <td className="px-4 py-2.5 text-right font-mono tabular-nums text-zinc-400">
-        {formatNumber(position.weightPct, 1)}%
+        {formatPercentPoints(position.weightPct, 1)}
       </td>
       <td className="px-4 py-2.5 text-right font-mono tabular-nums text-zinc-300">
         {formatNumber(position.priceEur, 2)}
@@ -63,7 +63,7 @@ export function PositionRow({ position, onEdit }: Props) {
         <button
           type="button"
           onClick={() => onEdit(position)}
-          className="rounded-md border border-zinc-700 px-2.5 py-1 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
+          className="rounded-md border border-zinc-700 px-2.5 py-1 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
         >
           Edit
         </button>

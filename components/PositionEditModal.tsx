@@ -128,7 +128,7 @@ function NumericFieldEditor({
           disabled={disabled}
           placeholder={mode === "adjust" ? "e.g. 100 or -50" : undefined}
           onChange={(event) => onInputChange(event.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono tabular-nums text-zinc-100 focus:border-blue-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50"
+          className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono tabular-nums text-zinc-100 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
         />
         <button
           type="button"
@@ -325,7 +325,7 @@ export function PositionEditModal({ position, onClose }: Props) {
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-950 hover:bg-white disabled:opacity-50"
+              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-zinc-950 transition-[filter] hover:brightness-95 disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save"}
             </button>

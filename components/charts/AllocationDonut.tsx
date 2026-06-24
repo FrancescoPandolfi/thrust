@@ -1,6 +1,6 @@
 "use client";
 
-import { formatEur } from "@/lib/format";
+import { formatEur, formatPercentPoints } from "@/lib/format";
 import {
   Cell,
   Pie,
@@ -15,7 +15,7 @@ type Props = {
   data: Slice[];
 };
 
-const SLICE_COLORS = ["#60a5fa", "#a78bfa", "#34d399", "#fbbf24", "#fb7185"];
+const SLICE_COLORS = ["#DFFF00", "#a78bfa", "#34d399", "#fbbf24", "#fb7185"];
 
 function AllocationTooltip({
   active,
@@ -30,7 +30,7 @@ function AllocationTooltip({
     <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm shadow-lg">
       <p className="font-medium text-zinc-100">{item.name}</p>
       <p className="font-mono tabular-nums text-zinc-300">
-        {formatEur(item.value)} ({item.pct.toFixed(1)}%)
+        {formatEur(item.value)} ({formatPercentPoints(item.pct)})
       </p>
     </div>
   );
@@ -94,7 +94,7 @@ export function AllocationDonut({ data }: Props) {
               />
               <span className="text-zinc-300">{slice.name}</span>
               <span className="font-mono tabular-nums text-zinc-400">
-                {slice.pct.toFixed(1)}%
+                {formatPercentPoints(slice.pct)}
               </span>
               <span className="font-mono tabular-nums text-zinc-500">
                 {formatEur(slice.value)}
