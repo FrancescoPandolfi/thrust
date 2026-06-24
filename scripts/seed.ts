@@ -13,6 +13,7 @@ const SEED_POSITIONS = [
     sortOrder: "1",
   },
   {
+    isin: "IE00B53SZB19",
     googleTicker: "AMS:CNDX",
     yahooSymbol: "CNDX.AS",
     title: "Nasdaq 100",
@@ -22,6 +23,7 @@ const SEED_POSITIONS = [
     sortOrder: "2",
   },
   {
+    isin: "IE00BKM4GZ66",
     googleTicker: "LON:EIMI",
     yahooSymbol: "EIMI.L",
     title: "Emerging Markets",
@@ -31,6 +33,7 @@ const SEED_POSITIONS = [
     sortOrder: "3",
   },
   {
+    isin: "IE00B5BMR087",
     googleTicker: "AMS:CSPX",
     yahooSymbol: "CSPX.AS",
     title: "S&P 500",
@@ -40,6 +43,7 @@ const SEED_POSITIONS = [
     sortOrder: "4",
   },
   {
+    isin: "LU1650488494",
     googleTicker: "EPA:EGOV",
     yahooSymbol: "EGOV.PA",
     title: "Euro Gov Bonds",
@@ -49,8 +53,9 @@ const SEED_POSITIONS = [
     sortOrder: "5",
   },
   {
+    isin: "LU1650488494",
     googleTicker: "EPA:EM35",
-    yahooSymbol: "EM35.PA",
+    yahooSymbol: "EM35.MI",
     title: "Govt Bond 3-5yr",
     category: "bond_etf" as const,
     shares: "33.422906",
@@ -58,6 +63,7 @@ const SEED_POSITIONS = [
     sortOrder: "6",
   },
   {
+    isin: "IE00BF59RX87",
     googleTicker: "LON:JRBE",
     yahooSymbol: "JRBE.L",
     title: "EUR Corporate Bond",
@@ -67,6 +73,7 @@ const SEED_POSITIONS = [
     sortOrder: "7",
   },
   {
+    isin: "IE000RHYOR04",
     googleTicker: "OTCMKTS:IIPUF",
     yahooSymbol: "IIPUF",
     title: "Ultrashort Bond",
@@ -76,8 +83,8 @@ const SEED_POSITIONS = [
     sortOrder: "8",
   },
   {
-    googleTicker: "CURRENCY:BTCUSD",
-    yahooSymbol: "BTC-USD",
+    googleTicker: "CURRENCY:BTCEUR",
+    yahooSymbol: "BTC-EUR",
     title: "Bitcoin",
     category: "crypto" as const,
     shares: "0.158316",
@@ -85,17 +92,17 @@ const SEED_POSITIONS = [
     sortOrder: "9",
   },
   {
-    googleTicker: "CURRENCY:SOLUSD",
-    yahooSymbol: "SOL-USD",
+    googleTicker: "CURRENCY:SOLEUR",
+    yahooSymbol: "SOL-EUR",
     title: "Solana",
     category: "crypto" as const,
-    shares: "16.759571",
+    shares: "32.672547",
     loadValueEur: "2571",
     sortOrder: "10",
   },
   {
-    googleTicker: "CURRENCY:ETHUSD",
-    yahooSymbol: "ETH-USD",
+    googleTicker: "CURRENCY:ETHEUR",
+    yahooSymbol: "ETH-EUR",
     title: "Ethereum",
     category: "crypto" as const,
     shares: "0.924557",

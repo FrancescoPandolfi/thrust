@@ -1,6 +1,7 @@
 "use client";
 
-import { Fragment, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import {
   updatePositionLoadValue,
   updatePositionShares,
@@ -33,7 +34,7 @@ export function PortfolioTable({ positions, totals }: Props) {
               <th className="px-4 py-3">Ticker</th>
               <th className="px-4 py-3">Title</th>
               <th className="px-4 py-3 text-right">%</th>
-              <th className="px-4 py-3 text-right">Price</th>
+              <th className="px-4 py-3 text-right">Price (EUR)</th>
               <th className="px-4 py-3 text-right">Shares</th>
               <th className="px-4 py-3 text-right">Load value</th>
               <th className="px-4 py-3 text-right">Value EUR</th>
@@ -104,15 +105,24 @@ export function EditableCell({
   onSave: (v: number) => Promise<void>;
   format?: (v: number) => string;
 }) {
+  const router = useRouter();
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState(format(value));
   const [saving, setSaving] = useState(false);
+  const [displayValue, setDisplayValue] = useState(value);
+
+  useEffect(() => {
+    setDisplayValue(value);
+  }, [value]);
 
   async function save() {
     setSaving(true);
     try {
-      await onSave(parseDecimal(draft));
+      const parsed = parseDecimal(draft);
+      await onSave(parsed);
+      setDisplayValue(parsed);
       setEditing(false);
+      router.refresh();
     } finally {
       setSaving(false);
     }
@@ -123,13 +133,13 @@ export function EditableCell({
       <button
         type="button"
         onClick={() => {
-          setDraft(format(value));
+          setDraft(format(displayValue));
           setEditing(true);
         }}
         className="font-mono tabular-nums text-zinc-200 hover:text-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500/50"
         title="Click to edit"
       >
-        {format(value)}
+        {format(displayValue)}
       </button>
     );
   }
@@ -145,7 +155,7 @@ export function EditableCell({
         if (e.key === "Enter") save();
         if (e.key === "Escape") setEditing(false);
       }}
-      className="w-24 rounded border border-zinc-600 bg-zinc-800 px-2 py-0.5 text-right font-mono tabular-nums text-zinc-100 focus:border-blue-500 focus:outline-none"
+      className="min-w-[7rem] rounded border border-zinc-600 bg-zinc-800 px-2 py-0.5 text-right font-mono tabular-nums text-zinc-100 focus:border-blue-500 focus:outline-none"
     />
   );
 }

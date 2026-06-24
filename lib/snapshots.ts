@@ -27,7 +27,10 @@ export async function getCurrentPortfolioValues() {
   ]);
 
   const symbols = posRows.map((p) => p.yahooSymbol);
-  let quotes = await getQuoteMap(symbols, { refresh: true });
+  let quotes = await getQuoteMap(symbols, {
+    refresh: true,
+    bypassCooldown: true,
+  });
   if (hasMissingQuotes([...quotes.values()])) {
     quotes = await getQuoteMap(symbols, { refresh: false });
   }

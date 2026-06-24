@@ -8,6 +8,7 @@ const NAV = [
   { href: "/", label: "Portfolio" },
   { href: "/cash", label: "Cash" },
   { href: "/returns", label: "Returns" },
+  { href: "/settings", label: "Settings" },
 ];
 
 export function AppShell({ children }: { children: React.ReactNode }) {

@@ -1,25 +1,38 @@
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
 import { inArray } from "drizzle-orm";
 import { getDb } from "./db";
 import { priceCache } from "./schema";
-
-const execFileAsync = promisify(execFile);
+import { resolveTwelveDataInstrument } from "./ticker-map";
 
 const CACHE_TTL_MS = 15 * 60 * 1000;
 const MIN_FETCH_INTERVAL_MS = 2 * 60 * 1000;
-const FETCH_DELAY_MS = 800;
 const EURUSD_SYMBOL = "EURUSD=X";
-const DEFAULT_EUR_USD = 1.08;
+
+const DEFAULT_FX = {
+  usdPerEur: 1.08,
+  gbpPerEur: 0.86,
+};
+
+/** Stored symbols that differ from the listing used for market data. */
+const QUOTE_SYMBOL_ALIASES: Record<string, string> = {
+  "EM35.PA": "EM35.MI",
+};
 
 const COINGECKO_IDS: Record<string, string> = {
   "BTC-USD": "bitcoin",
+  "BTC-EUR": "bitcoin",
   "ETH-USD": "ethereum",
+  "ETH-EUR": "ethereum",
   "SOL-USD": "solana",
+  "SOL-EUR": "solana",
 };
 
-const USER_AGENT =
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
+type TwelveDataQuote = {
+  symbol?: string;
+  currency?: string;
+  close?: string;
+  status?: string;
+  message?: string;
+};
 
 export type Quote = {
   symbol: string;
@@ -30,14 +43,12 @@ export type Quote = {
   stale?: boolean;
 };
 
-type ChartMeta = {
-  symbol?: string;
-  currency?: string;
-  regularMarketPrice?: number;
-  chartPreviousClose?: number;
+type FxRates = {
+  usdPerEur: number;
+  gbpPerEur: number;
 };
 
-let fetchInFlight: Promise<Map<string, Quote>> | null = null;
+let fetchInFlight: Promise<{ quotes: Map<string, Quote>; refreshed: Set<string> }> | null = null;
 let lastSuccessfulFetchAt = 0;
 
 function toNumber(value: string | number | null | undefined): number {
@@ -45,8 +56,8 @@ function toNumber(value: string | number | null | undefined): number {
   return typeof value === "number" ? value : Number.parseFloat(value);
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function quoteFetchSymbol(symbol: string): string {
+  return QUOTE_SYMBOL_ALIASES[symbol] ?? symbol;
 }
 
 function isCryptoSymbol(symbol: string): boolean {
@@ -81,27 +92,33 @@ async function getCachedQuotes(symbols: string[]): Promise<Map<string, Quote>> {
   return map;
 }
 
-function convertToEur(price: number, currency: string, eurUsdRate: number): number {
+function convertToEur(price: number, currency: string, fx: FxRates): number {
   const cur = currency.toUpperCase();
   if (cur === "EUR") return price;
-  if (cur === "USD") return price / eurUsdRate;
-  if (cur === "GBP") return price * 1.17;
+  if (cur === "USD") return price / fx.usdPerEur;
+  if (cur === "GBP") return price / fx.gbpPerEur;
   return price;
 }
 
-function getEurUsdRate(
-  quotes: Map<string, Quote>,
-  fallback = DEFAULT_EUR_USD,
-): number {
-  const fx = quotes.get(EURUSD_SYMBOL);
-  if (fx && fx.price > 0) return fx.price;
-  return fallback;
+function applyPriceEur(quotes: Map<string, Quote>, fx: FxRates): void {
+  for (const quote of quotes.values()) {
+    quote.priceEur = convertToEur(quote.price, quote.currency, fx);
+  }
 }
 
-function applyPriceEur(quotes: Map<string, Quote>): void {
-  const eurUsdRate = getEurUsdRate(quotes);
-  for (const quote of quotes.values()) {
-    quote.priceEur = convertToEur(quote.price, quote.currency, eurUsdRate);
+async function loadFxRates(
+  cachedQuotes: Map<string, Quote>,
+): Promise<FxRates> {
+  try {
+    return await fetchFrankfurterRates();
+  } catch (error) {
+    console.error("Frankfurter FX fetch failed:", error);
+    const cachedFx = cachedQuotes.get(EURUSD_SYMBOL);
+    return {
+      usdPerEur:
+        cachedFx && cachedFx.price > 0 ? cachedFx.price : DEFAULT_FX.usdPerEur,
+      gbpPerEur: DEFAULT_FX.gbpPerEur,
+    };
   }
 }
 
@@ -129,9 +146,9 @@ async function persistQuotes(results: Map<string, Quote>): Promise<void> {
   );
 }
 
-async function fetchFrankfurterEurUsd(): Promise<Quote> {
+async function fetchFrankfurterRates(): Promise<FxRates> {
   const response = await fetch(
-    "https://api.frankfurter.dev/v1/latest?from=EUR&to=USD",
+    "https://api.frankfurter.dev/v1/latest?from=EUR&to=USD,GBP",
     { cache: "no-store" },
   );
 
@@ -140,19 +157,26 @@ async function fetchFrankfurterEurUsd(): Promise<Quote> {
   }
 
   const data = (await response.json()) as {
-    rates?: { USD?: number };
+    rates?: { USD?: number; GBP?: number };
   };
 
   const usdPerEur = data.rates?.USD;
-  if (!usdPerEur || usdPerEur <= 0) {
-    throw new Error("Frankfurter returned invalid EUR/USD rate");
+  const gbpPerEur = data.rates?.GBP;
+  if (!usdPerEur || usdPerEur <= 0 || !gbpPerEur || gbpPerEur <= 0) {
+    throw new Error("Frankfurter returned invalid FX rates");
   }
+
+  return { usdPerEur, gbpPerEur };
+}
+
+async function fetchFrankfurterEurUsd(): Promise<Quote> {
+  const fx = await fetchFrankfurterRates();
 
   return {
     symbol: EURUSD_SYMBOL,
-    price: usdPerEur,
+    price: fx.usdPerEur,
     currency: "USD",
-    priceEur: 1 / usdPerEur,
+    priceEur: 1 / fx.usdPerEur,
     fetchedAt: new Date(),
   };
 }
@@ -167,7 +191,7 @@ async function fetchCoinGeckoQuotes(symbols: string[]): Promise<Map<string, Quot
 
   const ids = pairs.map((pair) => pair.id).join(",");
   const response = await fetch(
-    `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd`,
+    `https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=eur`,
     {
       headers: { Accept: "application/json" },
       cache: "no-store",
@@ -178,17 +202,101 @@ async function fetchCoinGeckoQuotes(symbols: string[]): Promise<Map<string, Quot
     throw new Error(`CoinGecko API ${response.status}`);
   }
 
-  const data = (await response.json()) as Record<string, { usd?: number }>;
+  const data = (await response.json()) as Record<string, { eur?: number }>;
   const fetchedAt = new Date();
 
   for (const pair of pairs) {
-    const price = data[pair.id]?.usd;
-    if (price == null || price <= 0) continue;
+    const priceEur = data[pair.id]?.eur;
+    if (priceEur == null || priceEur <= 0) continue;
 
     results.set(pair.symbol, {
       symbol: pair.symbol,
+      price: priceEur,
+      currency: "EUR",
+      priceEur,
+      fetchedAt,
+    });
+  }
+
+  return results;
+}
+
+function getTwelveDataApiKey(): string {
+  const apiKey = process.env.TWELVEDATA_API_KEY?.trim();
+  if (!apiKey) {
+    throw new Error(
+      "TWELVEDATA_API_KEY is not configured — get a free key at https://twelvedata.com/pricing",
+    );
+  }
+  return apiKey;
+}
+
+function parseTwelveDataQuoteItem(
+  data: Record<string, unknown>,
+  ticker: string,
+  batch: boolean,
+): TwelveDataQuote | null {
+  const item = batch ? data[ticker] : data;
+  if (!item || typeof item !== "object") return null;
+
+  const quote = item as TwelveDataQuote;
+  if (quote.status === "error") return null;
+  if (batch && quote.symbol && quote.symbol !== ticker) return null;
+  return quote;
+}
+
+async function fetchTwelveDataGroup(
+  apiKey: string,
+  mic_code: string | undefined,
+  yahooSymbols: string[],
+  tickers: string[],
+): Promise<Map<string, Quote>> {
+  const results = new Map<string, Quote>();
+  const params = new URLSearchParams({
+    symbol: tickers.join(","),
+    apikey: apiKey,
+  });
+  if (mic_code) {
+    params.set("mic_code", mic_code);
+  }
+
+  const response = await fetch(
+    `https://api.twelvedata.com/quote?${params.toString()}`,
+    { cache: "no-store" },
+  );
+
+  if (!response.ok) {
+    if (response.status === 429) {
+      throw new Error("Twelve Data rate limit (429)");
+    }
+    throw new Error(`Twelve Data HTTP ${response.status}`);
+  }
+
+  const data = (await response.json()) as Record<string, unknown>;
+  if (data.status === "error") {
+    throw new Error(
+      typeof data.message === "string"
+        ? data.message
+        : "Twelve Data returned an error",
+    );
+  }
+
+  const batch = tickers.length > 1;
+  const fetchedAt = new Date();
+
+  for (let i = 0; i < tickers.length; i++) {
+    const ticker = tickers[i]!;
+    const yahooSymbol = yahooSymbols[i]!;
+    const item = parseTwelveDataQuoteItem(data, ticker, batch);
+    if (!item) continue;
+
+    const price = toNumber(item.close);
+    if (price <= 0) continue;
+
+    results.set(yahooSymbol, {
+      symbol: yahooSymbol,
       price,
-      currency: "USD",
+      currency: item.currency ?? "EUR",
       priceEur: 0,
       fetchedAt,
     });
@@ -197,55 +305,49 @@ async function fetchCoinGeckoQuotes(symbols: string[]): Promise<Map<string, Quot
   return results;
 }
 
-async function fetchYahooChartCurl(symbol: string): Promise<Quote | null> {
-  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1d&range=1d`;
-
-  const { stdout } = await execFileAsync(
-    "curl",
-    ["-s", "-L", "-H", `User-Agent: ${USER_AGENT}`, url],
-    { timeout: 15_000, maxBuffer: 1024 * 1024 },
-  );
-
-  if (stdout.trimStart().startsWith("Too Many")) {
-    throw new Error("Yahoo Finance rate limit (429)");
-  }
-
-  const data = JSON.parse(stdout) as {
-    chart?: { result?: Array<{ meta?: ChartMeta }>; error?: unknown };
-  };
-
-  if (data.chart?.error) {
-    throw new Error(`Yahoo chart error for ${symbol}`);
-  }
-
-  const meta = data.chart?.result?.[0]?.meta;
-  const price = meta?.regularMarketPrice ?? meta?.chartPreviousClose;
-  if (!meta?.symbol || price == null || price <= 0) {
-    return null;
-  }
-
-  return {
-    symbol: meta.symbol,
-    price,
-    currency: meta.currency ?? "EUR",
-    priceEur: 0,
-    fetchedAt: new Date(),
-  };
-}
-
 async function fetchEtfQuotes(symbols: string[]): Promise<Map<string, Quote>> {
+  const apiKey = getTwelveDataApiKey();
+  const etfSymbols = [
+    ...new Set(
+      symbols
+        .filter((symbol) => !isCryptoSymbol(symbol) && !isFxSymbol(symbol))
+        .map(quoteFetchSymbol),
+    ),
+  ];
+  if (etfSymbols.length === 0) return new Map();
+
+  const groups = new Map<
+    string,
+    { yahooSymbols: string[]; tickers: string[] }
+  >();
+
+  for (const yahooSymbol of etfSymbols) {
+    const { ticker, mic_code } = resolveTwelveDataInstrument(yahooSymbol);
+    const micKey = mic_code ?? "";
+    const group = groups.get(micKey) ?? { yahooSymbols: [], tickers: [] };
+    group.yahooSymbols.push(yahooSymbol);
+    group.tickers.push(ticker);
+    groups.set(micKey, group);
+  }
+
   const results = new Map<string, Quote>();
-
-  for (const symbol of symbols) {
-    if (isCryptoSymbol(symbol) || isFxSymbol(symbol)) continue;
-
+  for (const [micKey, group] of groups) {
+    const mic_code = micKey || undefined;
     try {
-      const quote = await fetchYahooChartCurl(symbol);
-      if (quote) {
+      const groupQuotes = await fetchTwelveDataGroup(
+        apiKey,
+        mic_code,
+        group.yahooSymbols,
+        group.tickers,
+      );
+      for (const [symbol, quote] of groupQuotes) {
         results.set(symbol, quote);
       }
     } catch (error) {
-      console.error(`ETF quote failed for ${symbol}:`, error);
+      console.error(
+        `Twelve Data quote failed for ${group.tickers.join(",")}:`,
+        error,
+      );
       if (
         error instanceof Error &&
         error.message.includes("rate limit")
@@ -253,18 +355,46 @@ async function fetchEtfQuotes(symbols: string[]): Promise<Map<string, Quote>> {
         break;
       }
     }
-
-    await sleep(FETCH_DELAY_MS);
   }
 
   return results;
 }
 
-async function fetchAllQuotes(symbols: string[]): Promise<Map<string, Quote>> {
-  const unique = [...new Set(symbols.filter(Boolean))];
+function symbolsNeedingRefresh(
+  symbols: string[],
+  cached: Map<string, Quote>,
+): string[] {
   const now = Date.now();
+  return symbols.filter((symbol) => {
+    const quote = cached.get(symbol);
+    if (!quote || quote.price <= 0) return true;
+    return now - quote.fetchedAt.getTime() >= CACHE_TTL_MS;
+  });
+}
 
-  if (now - lastSuccessfulFetchAt < MIN_FETCH_INTERVAL_MS) {
+async function fetchAllQuotes(
+  symbols: string[],
+  options: { force?: boolean; bypassCooldown?: boolean } = {},
+): Promise<{ quotes: Map<string, Quote>; refreshed: Set<string> }> {
+  const unique = [...new Set(symbols.filter(Boolean))];
+  const cacheSymbols = [...new Set([...unique, EURUSD_SYMBOL])];
+  const cached = await getCachedQuotes(cacheSymbols);
+  const toFetch = options.force
+    ? unique
+    : symbolsNeedingRefresh(unique, cached);
+  const refreshed = new Set<string>();
+
+  if (toFetch.length === 0) {
+    const fx = await loadFxRates(cached);
+    applyPriceEur(cached, fx);
+    return { quotes: cached, refreshed };
+  }
+
+  const now = Date.now();
+  if (
+    !options.bypassCooldown &&
+    now - lastSuccessfulFetchAt < MIN_FETCH_INTERVAL_MS
+  ) {
     const waitMin = Math.ceil(
       (MIN_FETCH_INTERVAL_MS - (now - lastSuccessfulFetchAt)) / 60000,
     );
@@ -273,19 +403,18 @@ async function fetchAllQuotes(symbols: string[]): Promise<Map<string, Quote>> {
     );
   }
 
-  const results = new Map<string, Quote>();
-  const needsFx = unique.includes(EURUSD_SYMBOL) || unique.some(isCryptoSymbol);
+  const results = new Map<string, Quote>(cached);
 
-  if (needsFx) {
-    try {
-      const fx = await fetchFrankfurterEurUsd();
-      results.set(EURUSD_SYMBOL, fx);
-    } catch (error) {
-      console.error("Frankfurter FX fetch failed:", error);
-    }
+  try {
+    const fxQuote = await fetchFrankfurterEurUsd();
+    results.set(EURUSD_SYMBOL, fxQuote);
+  } catch (error) {
+    console.error("Frankfurter FX fetch failed:", error);
   }
 
-  const cryptoSymbols = unique.filter(isCryptoSymbol);
+  const fx = await loadFxRates(results);
+
+  const cryptoSymbols = toFetch.filter(isCryptoSymbol);
   if (cryptoSymbols.length > 0) {
     try {
       const crypto = await fetchCoinGeckoQuotes(cryptoSymbols);
@@ -297,29 +426,53 @@ async function fetchAllQuotes(symbols: string[]): Promise<Map<string, Quote>> {
     }
   }
 
-  const etfQuotes = await fetchEtfQuotes(unique);
+  const etfQuotes = await fetchEtfQuotes(toFetch);
   for (const [symbol, quote] of etfQuotes) {
     results.set(symbol, quote);
   }
 
-  if (results.size === 0) {
+  const fetchedCount = [...results.entries()].filter(([symbol, quote]) => {
+    if (!toFetch.includes(symbol)) return false;
+    return quote.price > 0;
+  }).length;
+
+  if (fetchedCount === 0 && toFetch.some((s) => !isCryptoSymbol(s) && !isFxSymbol(s))) {
     throw new Error("No quotes returned from market data providers");
   }
 
-  applyPriceEur(results);
-  await persistQuotes(results);
-  lastSuccessfulFetchAt = Date.now();
-  return results;
+  applyPriceEur(results, fx);
+
+  const toPersist = new Map<string, Quote>();
+  for (const symbol of toFetch) {
+    const quote = results.get(symbol);
+    if (quote && quote.price > 0) {
+      toPersist.set(symbol, quote);
+      refreshed.add(symbol);
+    }
+  }
+  if (results.has(EURUSD_SYMBOL)) {
+    toPersist.set(EURUSD_SYMBOL, results.get(EURUSD_SYMBOL)!);
+    refreshed.add(EURUSD_SYMBOL);
+  }
+  if (toPersist.size > 0) {
+    await persistQuotes(toPersist);
+    lastSuccessfulFetchAt = Date.now();
+  }
+
+  return { quotes: results, refreshed };
 }
 
-async function fetchAndCache(symbols: string[]): Promise<Map<string, Quote>> {
+async function fetchAndCache(
+  symbols: string[],
+  options: { force?: boolean; bypassCooldown?: boolean } = {},
+): Promise<{ quotes: Map<string, Quote>; refreshed: Set<string> }> {
   if (fetchInFlight) {
     return fetchInFlight;
   }
 
   fetchInFlight = (async () => {
     try {
-      return await fetchAllQuotes(symbols);
+      return await fetchAllQuotes(symbols, options);
     } finally {
       fetchInFlight = null;
     }
@@ -328,9 +481,42 @@ async function fetchAndCache(symbols: string[]): Promise<Map<string, Quote>> {
   return fetchInFlight;
 }
 
+export type GetQuotesOptions = {
+  refresh?: boolean;
+  /** Re-fetch every symbol even if cache is fresh. */
+  force?: boolean;
+  /** Skip the 2-minute cooldown (cron jobs). */
+  bypassCooldown?: boolean;
+};
+
+export async function refreshPortfolioQuotes(
+  symbols: string[],
+  options: Omit<GetQuotesOptions, "refresh"> = {},
+): Promise<{ updated: string[]; skipped: string[] }> {
+  const unique = [...new Set(symbols.filter(Boolean))];
+  const cached = await getCachedQuotes(unique);
+  const toFetch = options.force
+    ? unique
+    : symbolsNeedingRefresh(unique, cached);
+
+  if (toFetch.length === 0) {
+    return { updated: [], skipped: unique };
+  }
+
+  await fetchAndCache(unique, {
+    force: options.force,
+    bypassCooldown: options.bypassCooldown ?? true,
+  });
+
+  return {
+    updated: toFetch,
+    skipped: unique.filter((s) => !toFetch.includes(s)),
+  };
+}
+
 export async function getQuotes(
   symbols: string[],
-  options: { refresh?: boolean } = {},
+  options: GetQuotesOptions = {},
 ): Promise<Quote[]> {
   const unique = [...new Set(symbols.filter(Boolean))];
   if (unique.length === 0) return [];
@@ -339,9 +525,15 @@ export async function getQuotes(
   const cached = await getCachedQuotes(cacheSymbols);
 
   let fresh = new Map<string, Quote>();
+  let refreshed = new Set<string>();
   if (options.refresh) {
     try {
-      fresh = await fetchAndCache(unique);
+      const result = await fetchAndCache(unique, {
+        force: options.force,
+        bypassCooldown: options.bypassCooldown,
+      });
+      fresh = result.quotes;
+      refreshed = result.refreshed;
     } catch (error) {
       console.error("Quote refresh failed, using cached prices:", error);
     }
@@ -353,12 +545,12 @@ export async function getQuotes(
     if (quote) {
       merged.set(symbol, {
         ...quote,
-        stale: fresh.has(symbol) ? false : (quote.stale ?? true),
+        stale: refreshed.has(symbol) ? false : (quote.stale ?? true),
       });
     }
   }
 
-  applyPriceEur(merged);
+  applyPriceEur(merged, await loadFxRates(merged));
 
   return unique.map((symbol) => {
     const quote = merged.get(symbol);
@@ -378,7 +570,7 @@ export async function getQuotes(
 
 export async function getQuoteMap(
   symbols: string[],
-  options: { refresh?: boolean } = {},
+  options: GetQuotesOptions = {},
 ): Promise<Map<string, Quote>> {
   const quotes = await getQuotes(symbols, options);
   return new Map(quotes.map((quote) => [quote.symbol, quote]));
@@ -390,4 +582,91 @@ export function hasMissingQuotes(quotes: Quote[]): boolean {
 
 export function allQuotesStale(quotes: Quote[]): boolean {
   return quotes.length > 0 && quotes.every((quote) => quote.stale);
+}
+
+export type QuoteProvider = "twelvedata" | "coingecko" | "frankfurter";
+
+export function getQuoteProvider(symbol: string): QuoteProvider {
+  if (isFxSymbol(symbol)) return "frankfurter";
+  if (isCryptoSymbol(symbol)) return "coingecko";
+  return "twelvedata";
+}
+
+async function fetchSingleQuote(symbol: string): Promise<Quote | null> {
+  const provider = getQuoteProvider(symbol);
+  let quote: Quote | null = null;
+
+  if (provider === "frankfurter") {
+    quote = await fetchFrankfurterEurUsd();
+  } else if (provider === "coingecko") {
+    const map = await fetchCoinGeckoQuotes([symbol]);
+    quote = map.get(symbol) ?? null;
+  } else {
+    const map = await fetchEtfQuotes([symbol]);
+    quote = map.get(quoteFetchSymbol(symbol)) ?? null;
+  }
+
+  if (!quote || quote.price <= 0) return null;
+
+  const results = new Map<string, Quote>([[symbol, quote]]);
+  const fx = await loadFxRates(results);
+  applyPriceEur(results, fx);
+  const finalQuote = results.get(symbol)!;
+  await persistQuotes(new Map([[symbol, finalQuote]]));
+  return { ...finalQuote, stale: false };
+}
+
+export type ProbeQuoteResult =
+  | {
+      quote: Quote;
+      provider: QuoteProvider;
+      ok: true;
+    }
+  | {
+      quote: Quote | null;
+      provider: QuoteProvider;
+      ok: false;
+      error: string;
+    };
+
+export async function probeQuote(
+  symbol: string,
+  options: { refresh?: boolean } = {},
+): Promise<ProbeQuoteResult> {
+  const provider = getQuoteProvider(symbol);
+
+  if (options.refresh) {
+    try {
+      const quote = await fetchSingleQuote(symbol);
+      if (!quote) {
+        return {
+          quote: null,
+          provider,
+          ok: false,
+          error: "No price returned from provider",
+        };
+      }
+      return { quote, provider, ok: true };
+    } catch (error) {
+      return {
+        quote: null,
+        provider,
+        ok: false,
+        error: error instanceof Error ? error.message : "Fetch failed",
+      };
+    }
+  }
+
+  const [quote] = await getQuotes([symbol], { refresh: false });
+  if (quote.price <= 0) {
+    return {
+      quote,
+      provider,
+      ok: false,
+      error: quote.stale
+        ? "Not in cache — use live fetch"
+        : "Missing price in cache",
+    };
+  }
+  return { quote, provider, ok: true };
 }

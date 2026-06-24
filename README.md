@@ -1,13 +1,13 @@
 # Thrust
 
-Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres. Tracks ETF and crypto positions with live Yahoo Finance quotes, P/L calculations, cash balances, and automated daily return snapshots.
+Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres. Tracks ETF and crypto positions with live market quotes (Twelve Data for ETFs, CoinGecko for crypto), P/L calculations, cash balances, and automated daily return snapshots.
 
 ## Stack
 
 - **Next.js 16** (App Router) + React 19
 - **Tailwind CSS v4** (dark-only UI)
 - **Drizzle ORM** + **Neon Postgres** (`@neondatabase/serverless`)
-- **yahoo-finance2** for market data
+- **Twelve Data** + **CoinGecko** + **Frankfurter** for market data
 - **@tremor/react** for charts and KPI cards
 - **iron-session** + **bcryptjs** for password auth
 
@@ -33,6 +33,7 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
    | `APP_PASSWORD` | Login password (plain text or bcrypt hash) |
    | `SESSION_SECRET` | Random string, 32+ characters |
    | `CRON_SECRET` | Bearer token for cron snapshot endpoint |
+   | `TWELVEDATA_API_KEY` | Free API key from [twelvedata.com/pricing](https://twelvedata.com/pricing) for ETF quotes |
 
 3. Push the database schema:
 

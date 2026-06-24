@@ -21,7 +21,10 @@ export function PositionRow({ position }: Props) {
         {position.isin ?? "—"}
       </td>
       <td className="px-4 py-2.5 font-mono text-xs text-zinc-300">
-        {position.googleTicker}
+        <span>{position.googleTicker}</span>
+        <span className="mt-0.5 block text-[10px] text-zinc-500">
+          {position.yahooSymbol}
+        </span>
         {position.stale && (
           <span className="ml-1 rounded bg-amber-900/50 px-1 text-[10px] text-amber-400">
             stale
