@@ -1,6 +1,6 @@
 import { computePortfolio, groupByCategory } from "@/lib/calculations";
 import { getDb } from "@/lib/db";
-import { getQuoteMap } from "@/lib/prices";
+import { getQuoteMap, getUsdPerEur } from "@/lib/prices";
 import { positionToInstrument } from "@/lib/instruments";
 import { cashBalances, positions } from "@/lib/schema";
 
@@ -12,12 +12,16 @@ export async function loadPortfolioData(refresh = false) {
   ]);
 
   const instruments = posRows.map(positionToInstrument);
-  const quotes = await getQuoteMap(instruments, { refresh });
+  const [quotes, usdPerEur] = await Promise.all([
+    getQuoteMap(instruments, { refresh }),
+    getUsdPerEur(),
+  ]);
   const { positions: computed, totals } = computePortfolio(
     posRows,
     cashRows,
     quotes,
     true,
+    usdPerEur,
   );
 
   const groups = groupByCategory(computed);

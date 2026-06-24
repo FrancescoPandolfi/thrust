@@ -1,7 +1,7 @@
 "use client";
 
 import type { ComputedPosition } from "@/lib/calculations";
-import { formatEur, formatNumber, formatPercentPoints, formatPct } from "@/lib/format";
+import { formatEur, formatNumber, formatPercentPoints, formatPct, formatUsd } from "@/lib/format";
 
 type Props = {
   position: ComputedPosition;
@@ -32,7 +32,16 @@ export function PositionRow({ position, onEdit }: Props) {
         {formatPercentPoints(position.weightPct, 1)}
       </td>
       <td className="px-4 py-2.5 text-right font-mono tabular-nums text-zinc-300">
-        {formatNumber(position.priceEur, 2)}
+        {position.priceEur > 0 && position.priceUsd > 0 ? (
+          <span
+            className="cursor-help border-b border-dotted border-zinc-600"
+            title={formatUsd(position.priceUsd)}
+          >
+            {formatNumber(position.priceEur, 2)}
+          </span>
+        ) : (
+          formatNumber(position.priceEur, 2)
+        )}
       </td>
       <td className="px-4 py-2.5 text-right font-mono tabular-nums text-zinc-200">
         {formatNumber(Number.parseFloat(position.shares), 2)}

@@ -560,6 +560,14 @@ export async function getQuotes(
   });
 }
 
+export async function getUsdPerEur(): Promise<number> {
+  const ctx = await loadMarketContext();
+  const fxInstrument = createFxInstrument(ctx);
+  const cached = await getCachedQuotes([fxInstrument], ctx);
+  const fx = await loadFxRates(cached, ctx);
+  return fx.usdPerEur;
+}
+
 export async function getQuoteMap(
   instruments: InstrumentRef[],
   options: GetQuotesOptions = {},

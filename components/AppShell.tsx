@@ -48,7 +48,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <form action={logoutAction}>
             <button
               type="submit"
-              className="rounded-md bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+              className="cursor-pointer rounded-md bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
             >
               Logout
             </button>

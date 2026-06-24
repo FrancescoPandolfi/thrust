@@ -4,6 +4,7 @@ import type { CashBalance, Position } from "./schema";
 export type ComputedPosition = Position & {
   price: number;
   priceEur: number;
+  priceUsd: number;
   valueEur: number;
   plEur: number;
   plPct: number;
@@ -30,6 +31,7 @@ export function computePortfolio(
   cash: CashBalance[],
   quotes: Map<string, Quote>,
   includeCash = true,
+  usdPerEur = 1.08,
 ): { positions: ComputedPosition[]; totals: PortfolioTotals } {
   const cashValueEur = cash.reduce((sum, c) => sum + toNum(c.amountEur), 0);
 
@@ -37,6 +39,9 @@ export function computePortfolio(
     const quote = quotes.get(quoteKey(positionToInstrument(pos)));
     const price = quote?.price ?? 0;
     const priceEur = quote?.priceEur ?? 0;
+    const currency = quote?.currency?.toUpperCase() ?? "";
+    const priceUsd =
+      currency === "USD" ? price : priceEur > 0 ? priceEur * usdPerEur : 0;
     const shares = toNum(pos.shares);
     const loadValueEur = toNum(pos.loadValueEur);
     const valueEur = shares * priceEur;
@@ -47,6 +52,7 @@ export function computePortfolio(
       ...pos,
       price,
       priceEur,
+      priceUsd,
       valueEur,
       plEur,
       plPct,

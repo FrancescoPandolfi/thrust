@@ -8,6 +8,13 @@ const eurFormatter = new Intl.NumberFormat(DISPLAY_LOCALE, {
   maximumFractionDigits: 2,
 });
 
+const usdFormatter = new Intl.NumberFormat(DISPLAY_LOCALE, {
+  style: "currency",
+  currency: "USD",
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
 const pctFormatter = new Intl.NumberFormat(DISPLAY_LOCALE, {
   style: "percent",
   minimumFractionDigits: 2,
@@ -16,6 +23,10 @@ const pctFormatter = new Intl.NumberFormat(DISPLAY_LOCALE, {
 
 export function formatEur(value: number): string {
   return eurFormatter.format(value);
+}
+
+export function formatUsd(value: number): string {
+  return usdFormatter.format(value);
 }
 
 /** Format a decimal ratio (0.05 → "5,00%") */
