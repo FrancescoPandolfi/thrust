@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { CashBalance } from "@/lib/schema";
 import { formatEur } from "@/lib/format";
+import { MetricCard } from "@/components/MetricCard";
 import { CashBalanceModal } from "./CashBalanceModal";
 import { CashDeleteConfirmModal } from "./CashDeleteConfirmModal";
 import { DeleteIconButton, EditIconButton } from "./icons/ActionButtons";
@@ -10,6 +11,7 @@ import { PlusIcon } from "./icons/ActionIcons";
 
 type Props = {
   balances: CashBalance[];
+  cashValueEur: number;
 };
 
 type ModalState =
@@ -18,25 +20,13 @@ type ModalState =
   | { mode: "delete"; balance: CashBalance }
   | null;
 
-export function CashSection({ balances }: Props) {
+export function CashSection({ balances, cashValueEur }: Props) {
   const [modal, setModal] = useState<ModalState>(null);
-
-  const total = balances.reduce(
-    (s, b) => s + Number.parseFloat(b.amountEur),
-    0,
-  );
 
   return (
     <>
-      <div className="space-y-6">
-        <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-6">
-          <p className="text-sm font-medium uppercase tracking-wide text-zinc-400">
-            Total liquidity
-          </p>
-          <p className="mt-1 font-mono text-3xl tabular-nums text-zinc-100">
-            {formatEur(total)}
-          </p>
-        </div>
+      <div className="space-y-3">
+        <MetricCard label="Cash" value={formatEur(cashValueEur)} />
 
         <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
           <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">

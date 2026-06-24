@@ -1,6 +1,13 @@
 import type { Instrumentation } from "next";
 import { logProductionError } from "@/lib/errors";
 
+export async function register() {
+  if (process.env.NEXT_RUNTIME === "nodejs") {
+    const { validateEnv } = await import("@/lib/env");
+    validateEnv();
+  }
+}
+
 export const onRequestError: Instrumentation.onRequestError = async (
   err,
   request,

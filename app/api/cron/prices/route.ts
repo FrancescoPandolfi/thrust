@@ -1,4 +1,6 @@
 import { NextResponse } from "next/server";
+import { isAuthorizedCron } from "@/lib/cron-auth";
+import { productionErrorMessage } from "@/lib/env";
 import { getDb } from "@/lib/db";
 import { logProductionError } from "@/lib/errors";
 import { refreshPortfolioQuotes } from "@/lib/prices";
@@ -9,10 +11,7 @@ export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
@@ -39,8 +38,7 @@ export async function GET(request: Request) {
     await logProductionError("cron/prices", error, { force });
     return NextResponse.json(
       {
-        error:
-          error instanceof Error ? error.message : "Price refresh failed",
+        error: productionErrorMessage(error, "Price refresh failed"),
       },
       { status: 500 },
     );

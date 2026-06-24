@@ -13,6 +13,8 @@ type Slice = { name: string; value: number };
 
 type Props = {
   data: Slice[];
+  compact?: boolean;
+  embedded?: boolean;
 };
 
 const SLICE_COLORS = ["#DFFF00", "#a78bfa", "#34d399", "#fbbf24", "#fb7185"];
@@ -36,12 +38,32 @@ function AllocationTooltip({
   );
 }
 
-export function AllocationDonut({ data }: Props) {
+export function AllocationDonut({ data, compact = false, embedded = false }: Props) {
   if (data.length === 0) {
+    if (embedded) {
+      return (
+        <p className="py-6 text-center text-sm text-zinc-400">No data yet</p>
+      );
+    }
+
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-        <h2 className="text-sm font-medium text-zinc-100">Allocation by category</h2>
-        <p className="mt-4 text-sm text-zinc-400">No data yet</p>
+      <div
+        className={`rounded-xl border border-zinc-800 bg-zinc-900 ${
+          compact ? "flex h-full flex-col p-4" : "p-4"
+        }`}
+      >
+        <h2
+          className={
+            compact
+              ? "text-xs font-medium uppercase tracking-wide text-zinc-400"
+              : "text-sm font-medium text-zinc-100"
+          }
+        >
+          Allocation by category
+        </h2>
+        <p className={`text-sm text-zinc-400 ${compact ? "mt-auto py-6 text-center" : "mt-4"}`}>
+          No data yet
+        </p>
       </div>
     );
   }
@@ -51,6 +73,69 @@ export function AllocationDonut({ data }: Props) {
     ...item,
     pct: total > 0 ? (item.value / total) * 100 : 0,
   }));
+
+  if (compact || embedded) {
+    const content = (
+      <div className="flex h-full flex-col items-center justify-center gap-3">
+        <div className="h-28 w-28 shrink-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={slices}
+                dataKey="value"
+                nameKey="name"
+                cx="50%"
+                cy="50%"
+                innerRadius="58%"
+                outerRadius="100%"
+                startAngle={90}
+                endAngle={-270}
+                stroke="rgb(9 9 11)"
+                strokeWidth={2}
+              >
+                {slices.map((slice, index) => (
+                  <Cell
+                    key={slice.name}
+                    fill={SLICE_COLORS[index % SLICE_COLORS.length]}
+                  />
+                ))}
+              </Pie>
+              <Tooltip content={<AllocationTooltip />} />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+        <ul className="w-full space-y-1.5 text-xs">
+          {slices.map((slice, index) => (
+            <li key={slice.name} className="flex items-center gap-2">
+              <span
+                className="h-2 w-2 shrink-0 rounded-full"
+                style={{
+                  backgroundColor: SLICE_COLORS[index % SLICE_COLORS.length],
+                }}
+              />
+              <span className="min-w-0 flex-1 truncate text-zinc-300">
+                {slice.name}
+              </span>
+              <span className="shrink-0 font-mono tabular-nums text-zinc-400">
+                {formatPercentPoints(slice.pct, 0)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    );
+
+    if (embedded) return content;
+
+    return (
+      <div className="flex h-full flex-col rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+        <h2 className="text-xs font-medium uppercase tracking-wide text-zinc-400">
+          Allocation by category
+        </h2>
+        <div className="mt-3">{content}</div>
+      </div>
+    );
+  }
 
   return (
     <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">

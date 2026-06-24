@@ -45,15 +45,12 @@ export default async function ReturnsPage({ searchParams }: Props) {
 
   return (
     <AppShell>
-      <div className="space-y-6">
-        <h1 className="text-2xl font-semibold text-zinc-100">Returns</h1>
-        <ReturnsPageClient
-          today={today}
-          daily={daily}
-          weekly={weekly}
-          chart={chart}
-        />
-      </div>
+      <ReturnsPageClient
+        today={today}
+        daily={daily}
+        weekly={weekly}
+        chart={chart}
+      />
     </AppShell>
   );
 }

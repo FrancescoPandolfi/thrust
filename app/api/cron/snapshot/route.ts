@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { isAuthorizedCron } from "@/lib/cron-auth";
 import { captureSnapshot } from "@/lib/snapshots";
 import { logProductionError } from "@/lib/errors";
 import type { SnapshotType } from "@/lib/schema";
@@ -6,10 +7,7 @@ import type { SnapshotType } from "@/lib/schema";
 export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization");
-  const cronSecret = process.env.CRON_SECRET;
-
-  if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
+  if (!isAuthorizedCron(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 

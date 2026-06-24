@@ -1,29 +1,31 @@
 import bcrypt from "bcryptjs";
-import { getIronSession, type SessionOptions } from "iron-session";
+import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
+import { getSessionOptions } from "@/lib/session-config";
+import { safeEqual } from "@/lib/secure-compare";
 
-export type SessionData = {
-  isLoggedIn: boolean;
-};
-
-export const sessionOptions: SessionOptions = {
-  password: process.env.SESSION_SECRET ?? "complex_password_at_least_32_characters_long",
-  cookieName: "thrust_session",
-  cookieOptions: {
-    secure: process.env.NODE_ENV === "production",
-    httpOnly: true,
-    sameSite: "lax" as const,
-    maxAge: 60 * 60 * 24 * 30,
-  },
-};
+export type { SessionData } from "@/lib/session-config";
+export { getSessionOptions } from "@/lib/session-config";
 
 export async function getSession() {
-  return getIronSession<SessionData>(await cookies(), sessionOptions);
+  return getIronSession(await cookies(), getSessionOptions());
 }
 
 export async function isAuthenticated(): Promise<boolean> {
   const session = await getSession();
   return session.isLoggedIn === true;
+}
+
+function verifyAppPassword(password: string, appPassword: string): boolean {
+  if (appPassword.startsWith("$2")) {
+    return bcrypt.compareSync(password, appPassword);
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    return false;
+  }
+
+  return safeEqual(password, appPassword);
 }
 
 export async function login(password: string): Promise<boolean> {
@@ -32,11 +34,9 @@ export async function login(password: string): Promise<boolean> {
     throw new Error("APP_PASSWORD is not configured");
   }
 
-  const valid =
-    password === appPassword ||
-    (appPassword.startsWith("$2") && bcrypt.compareSync(password, appPassword));
-
-  if (!valid) return false;
+  if (!verifyAppPassword(password, appPassword)) {
+    return false;
+  }
 
   const session = await getSession();
   session.isLoggedIn = true;

@@ -1,11 +1,9 @@
 "use client";
 
-import { Tab, TabGroup, TabList, TabPanel, TabPanels } from "@tremor/react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useState } from "react";
-import { PortfolioAreaChart } from "@/components/charts/PortfolioAreaChart";
 import { ReturnsBarChart } from "@/components/charts/ReturnsBarChart";
-import { ReturnsSummary } from "@/components/ReturnsSummary";
+import { ReturnsOverview } from "@/components/ReturnsOverview";
 import { ReturnsTable } from "@/components/ReturnsTable";
 import type {
   ChartPoint,
@@ -38,10 +36,12 @@ const RANGES = [
   { label: "All", days: null },
 ] as const;
 
+type Period = "daily" | "weekly";
+
 export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [tab, setTab] = useState(0);
+  const [period, setPeriod] = useState<Period>("daily");
 
   const currentRange = searchParams.get("range") ?? "3M";
 
@@ -71,58 +71,79 @@ export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
 
   return (
     <div className="space-y-6">
-      <ReturnsSummary {...today} />
-
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="text-sm text-zinc-400">Range:</span>
-        {RANGES.map((r) => (
-          <button
-            key={r.label}
-            type="button"
-            onClick={() => setRange(r.label)}
-            className={`cursor-pointer rounded-md px-3 py-1 text-sm font-medium transition-colors ${
-              currentRange === r.label
-                ? "bg-zinc-800 text-accent"
-                : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-2xl font-semibold text-zinc-100">Returns</h1>
+        <div className="flex flex-wrap items-center gap-1 rounded-lg border border-zinc-800 bg-zinc-900 p-1">
+          {RANGES.map((range) => (
+            <button
+              key={range.label}
+              type="button"
+              onClick={() => setRange(range.label)}
+              className={`cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                currentRange === range.label
+                  ? "bg-zinc-800 text-accent"
+                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+              }`}
+            >
+              {range.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      <TabGroup index={tab} onIndexChange={setTab}>
-        <TabList>
-          <Tab>Daily</Tab>
-          <Tab>Weekly</Tab>
-        </TabList>
-        <TabPanels>
-          <TabPanel>
-            <div className="mt-4 grid gap-4 lg:grid-cols-2">
-              <ReturnsBarChart
-                data={dailyChartData}
-                indexKey="date"
-                title="Daily returns %"
-              />
-              <PortfolioAreaChart data={chartData} />
-            </div>
-          </TabPanel>
-          <TabPanel>
-            <div className="mt-4">
-              <ReturnsBarChart
-                data={weeklyChartData}
-                indexKey="week"
-                title="Weekly returns %"
-              />
-            </div>
-          </TabPanel>
-        </TabPanels>
-      </TabGroup>
+      <ReturnsOverview today={today} chart={chartData} />
 
-      <div>
-        <h2 className="mb-3 text-lg font-semibold text-zinc-100">History</h2>
-        <ReturnsTable rows={daily} />
-      </div>
+      <section className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex gap-1 rounded-lg border border-zinc-800 bg-zinc-900 p-1">
+            <button
+              type="button"
+              onClick={() => setPeriod("daily")}
+              className={`cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                period === "daily"
+                  ? "bg-zinc-800 text-accent"
+                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+              }`}
+            >
+              Daily
+            </button>
+            <button
+              type="button"
+              onClick={() => setPeriod("weekly")}
+              className={`cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                period === "weekly"
+                  ? "bg-zinc-800 text-accent"
+                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+              }`}
+            >
+              Weekly
+            </button>
+          </div>
+        </div>
+
+        {period === "daily" ? (
+          <ReturnsBarChart
+            data={dailyChartData}
+            indexKey="date"
+            title="Daily returns %"
+          />
+        ) : (
+          <ReturnsBarChart
+            data={weeklyChartData}
+            indexKey="week"
+            title="Weekly returns %"
+          />
+        )}
+      </section>
+
+      <section>
+        <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+          <div className="border-b border-zinc-800 px-4 py-3">
+            <h2 className="text-sm font-medium text-zinc-200">History</h2>
+          </div>
+          <ReturnsTable rows={daily} embedded />
+        </div>
+      </section>
     </div>
   );
 }

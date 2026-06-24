@@ -26,7 +26,7 @@ export async function loadMarketContext(
   const fxSymbol = fxRows[0]?.symbol;
   if (!fxSymbol) {
     throw new Error(
-      `Missing quote_sources row "${FX_SOURCE_ID}". Run db:seed.`,
+      `Missing quote_sources row "${FX_SOURCE_ID}". Run npm run db:seed.`,
     );
   }
 

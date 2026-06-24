@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
+import { productionErrorMessage } from "@/lib/env";
 import { logProductionError } from "@/lib/errors";
 import { getDb } from "@/lib/db";
 import { allQuotesStale, getQuotes, hasMissingQuotes } from "@/lib/prices";
@@ -8,22 +9,43 @@ import { positions } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 
-export async function GET(request: Request) {
+async function fetchQuotes(options: { refresh: boolean; force: boolean }) {
+  const db = getDb();
+  const rows = await db.select().from(positions);
+  const instruments = rows.map(positionToInstrument);
+  return getQuotes(instruments, options);
+}
+
+export async function GET() {
   if (!(await isAuthenticated())) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const refresh = searchParams.get("refresh") === "1";
-  const force = searchParams.get("force") === "1";
+  try {
+    const quotes = await fetchQuotes({ refresh: false, force: false });
+    return NextResponse.json({ quotes });
+  } catch (error) {
+    console.error(error);
+    await logProductionError("api/quotes", error);
+    return NextResponse.json(
+      {
+        error: productionErrorMessage(error, "Failed to fetch quotes"),
+        rateLimited: true,
+      },
+      { status: 429 },
+    );
+  }
+}
+
+export async function POST() {
+  if (!(await isAuthenticated())) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
-    const db = getDb();
-    const rows = await db.select().from(positions);
-    const instruments = rows.map(positionToInstrument);
-    const quotes = await getQuotes(instruments, { refresh, force });
+    const quotes = await fetchQuotes({ refresh: true, force: false });
 
-    if (refresh && hasMissingQuotes(quotes) && allQuotesStale(quotes)) {
+    if (hasMissingQuotes(quotes) && allQuotesStale(quotes)) {
       return NextResponse.json(
         {
           error:
@@ -41,10 +63,7 @@ export async function GET(request: Request) {
     await logProductionError("api/quotes", error);
     return NextResponse.json(
       {
-        error:
-          error instanceof Error
-            ? error.message
-            : "Failed to fetch quotes",
+        error: productionErrorMessage(error, "Failed to refresh quotes"),
         rateLimited: true,
       },
       { status: 429 },

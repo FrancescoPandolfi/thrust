@@ -19,6 +19,7 @@ export type PortfolioTotals = {
   totalLoadEur: number;
   totalPlEur: number;
   totalPlPct: number;
+  totalPlPctWithCash: number;
 };
 
 function toNum(v: string | number | null | undefined): number {
@@ -68,6 +69,11 @@ export function computePortfolio(
     : positionsValueEur;
   const totalPlEur = computed.reduce((s, p) => s + p.plEur, 0);
   const totalPlPct = totalLoadEur > 0 ? positionsValueEur / totalLoadEur - 1 : 0;
+  const totalBasisWithCash = totalLoadEur + cashValueEur;
+  const totalPlPctWithCash =
+    totalBasisWithCash > 0
+      ? (positionsValueEur + cashValueEur) / totalBasisWithCash - 1
+      : 0;
 
   const withWeights = computed.map((p) => ({
     ...p,
@@ -83,6 +89,7 @@ export function computePortfolio(
       totalLoadEur,
       totalPlEur,
       totalPlPct,
+      totalPlPctWithCash,
     },
   };
 }

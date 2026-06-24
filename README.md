@@ -30,7 +30,7 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
    | Variable | Description |
    |----------|-------------|
    | `DATABASE_URL` | Neon Postgres connection string |
-   | `APP_PASSWORD` | Login password (plain text or bcrypt hash) |
+   | `APP_PASSWORD` | Login password (plain text in dev; bcrypt hash required in production) |
    | `SESSION_SECRET` | Random string, 32+ characters |
    | `CRON_SECRET` | Bearer token for cron snapshot endpoint |
 
@@ -40,11 +40,13 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
    npm run db:push
    ```
 
-4. Seed initial positions:
+4. Seed reference data (exchanges and FX quote source):
 
    ```bash
    npm run db:seed
    ```
+
+   Add your positions from the portfolio UI after signing in.
 
 5. Start the dev server:
 
@@ -71,7 +73,7 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
 
    Or use the Vercel CLI against your production database.
 
-6. Seed production data:
+6. Seed reference data on production (if not already present):
 
    ```bash
    DATABASE_URL="..." npm run db:seed
@@ -94,7 +96,7 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
 | `npm run build` | Production build |
 | `npm run db:generate` | Generate Drizzle migrations |
 | `npm run db:push` | Push schema to database |
-| `npm run db:seed` | Seed positions and cash |
+| `npm run db:seed` | Seed exchanges and FX quote source |
 
 ## Pages
 
@@ -106,6 +108,7 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
 
 ## API
 
-- `GET /api/quotes?refresh=1` — Fetch cached or fresh quotes
+- `GET /api/quotes` — Fetch cached quotes
+- `POST /api/quotes` — Refresh quotes from market data providers
 - `GET /api/returns?period=day|week&from=&to=` — Return history
 - `GET /api/cron/snapshot?type=open|close` — Cron snapshot (Bearer auth)

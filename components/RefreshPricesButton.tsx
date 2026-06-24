@@ -12,7 +12,7 @@ export function RefreshPricesButton() {
     setLoading(true);
     setMessage(null);
     try {
-      const response = await fetch("/api/quotes?refresh=1");
+      const response = await fetch("/api/quotes", { method: "POST" });
       const data = (await response.json()) as {
         error?: string;
         rateLimited?: boolean;
@@ -33,23 +33,23 @@ export function RefreshPricesButton() {
   }
 
   return (
-    <div className="flex flex-col items-end gap-2">
-      <button
-        type="button"
-        onClick={refresh}
-        disabled={loading}
-        className="cursor-pointer rounded-lg bg-zinc-800 px-4 py-2 text-sm font-medium text-zinc-200 transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {loading ? "Refreshing…" : "Refresh prices"}
-      </button>
+    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-end gap-2">
       {message && (
         <p
-          className={`text-xs ${message.includes("updated") ? "text-emerald-400" : "text-amber-400"}`}
+          className={`max-w-[min(16rem,calc(100vw-3rem))] rounded-lg border border-zinc-800 bg-zinc-900/95 px-3 py-2 text-xs shadow-lg backdrop-blur ${message.includes("updated") ? "text-emerald-400" : "text-amber-400"}`}
           role="status"
         >
           {message}
         </p>
       )}
+      <button
+        type="button"
+        onClick={refresh}
+        disabled={loading}
+        className="btn-primary rounded-lg px-4 py-2.5 text-sm shadow-[0_4px_24px_-4px_rgb(0_0_0/0.5),0_0_20px_-4px_rgb(223_255_0/0.35)]"
+      >
+        {loading ? "Refreshing…" : "Refresh prices"}
+      </button>
     </div>
   );
 }

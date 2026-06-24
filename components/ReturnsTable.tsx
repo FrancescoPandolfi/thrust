@@ -3,19 +3,26 @@ import type { DailyReturnRow } from "@/lib/returns";
 
 type Props = {
   rows: DailyReturnRow[];
+  embedded?: boolean;
 };
 
-export function ReturnsTable({ rows }: Props) {
+export function ReturnsTable({ rows, embedded = false }: Props) {
   if (rows.length === 0) {
     return (
-      <div className="rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center text-sm text-zinc-400">
+      <div
+        className={
+          embedded
+            ? "p-8 text-center text-sm text-zinc-400"
+            : "rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center text-sm text-zinc-400"
+        }
+      >
         No return history yet. Snapshots are captured daily at open and close.
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+    <div className={embedded ? "" : "overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900"}>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead>
