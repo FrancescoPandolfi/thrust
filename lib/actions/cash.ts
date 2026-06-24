@@ -12,12 +12,20 @@ async function requireAuth() {
   }
 }
 
-export async function updateCashBalance(id: string, amountEur: number) {
+export async function updateCashBalance(
+  id: string,
+  label: string,
+  amountEur: number,
+) {
   await requireAuth();
   const db = getDb();
   await db
     .update(cashBalances)
-    .set({ amountEur: String(amountEur), updatedAt: new Date() })
+    .set({
+      label: label.trim(),
+      amountEur: String(amountEur),
+      updatedAt: new Date(),
+    })
     .where(eq(cashBalances.id, id));
   revalidatePath("/");
   revalidatePath("/cash");
@@ -27,9 +35,10 @@ export async function addCashBalance(label: string, amountEur: number) {
   await requireAuth();
   const db = getDb();
   await db.insert(cashBalances).values({
-    label,
+    label: label.trim(),
     amountEur: String(amountEur),
   });
+  revalidatePath("/");
   revalidatePath("/cash");
 }
 
@@ -37,5 +46,6 @@ export async function deleteCashBalance(id: string) {
   await requireAuth();
   const db = getDb();
   await db.delete(cashBalances).where(eq(cashBalances.id, id));
+  revalidatePath("/");
   revalidatePath("/cash");
 }

@@ -2,6 +2,7 @@
 
 import type { ComputedPosition } from "@/lib/calculations";
 import { formatEur, formatNumber, formatPercentPoints, formatPct, formatUsd } from "@/lib/format";
+import { EditIconButton } from "./icons/ActionButtons";
 
 type Props = {
   position: ComputedPosition;
@@ -69,13 +70,10 @@ export function PositionRow({ position, onEdit }: Props) {
         {formatEur(position.plEur)}
       </td>
       <td className="px-4 py-2.5 text-right">
-        <button
-          type="button"
+        <EditIconButton
+          label={`Edit ${position.title}`}
           onClick={() => onEdit(position)}
-          className="rounded-md border border-zinc-700 px-2.5 py-1 text-xs font-medium text-zinc-300 transition-colors hover:border-zinc-600 hover:bg-zinc-800 hover:text-zinc-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
-        >
-          Edit
-        </button>
+        />
       </td>
     </tr>
   );
