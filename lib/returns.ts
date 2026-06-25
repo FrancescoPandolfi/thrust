@@ -105,7 +105,7 @@ export async function getCloseSnapshotsForChart(
 
   return rows.map((r) => ({
     date: r.date,
-    totalValueEur: toNum(r.totalValueEur),
+    totalValueEur: toNum(r.positionsValueEur),
   }));
 }
 
@@ -135,15 +135,15 @@ export async function getTodaySummary() {
   if (!closeSnap) {
     try {
       const live = await getCurrentPortfolioValues();
-      liveValue = live.totalValueEur;
+      liveValue = live.positionsValueEur;
     } catch {
       liveValue = null;
     }
   }
 
-  const startValue = openSnap ? toNum(openSnap.totalValueEur) : null;
+  const startValue = openSnap ? toNum(openSnap.positionsValueEur) : null;
   const endValue = closeSnap
-    ? toNum(closeSnap.totalValueEur)
+    ? toNum(closeSnap.positionsValueEur)
     : liveValue;
 
   let returnEur: number | null = todayReturn ? toNum(todayReturn.returnEur) : null;

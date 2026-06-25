@@ -1,4 +1,4 @@
-import { and, desc, eq } from "drizzle-orm";
+import { and, desc, eq, lt } from "drizzle-orm";
 import { computePortfolio } from "./calculations";
 import { getDb } from "./db";
 import { getQuoteMap, hasMissingQuotes } from "./prices";
@@ -35,10 +35,10 @@ export async function getCurrentPortfolioValues() {
   if (hasMissingQuotes([...quotes.values()])) {
     quotes = await getQuoteMap(instruments, { refresh: false });
   }
-  const { totals } = computePortfolio(posRows, cashRows, quotes, true);
+  const { totals } = computePortfolio(posRows, cashRows, quotes, false);
 
   return {
-    totalValueEur: totals.totalValueEur,
+    totalValueEur: totals.positionsValueEur,
     positionsValueEur: totals.positionsValueEur,
     cashValueEur: totals.cashValueEur,
   };
@@ -75,6 +75,12 @@ export async function captureSnapshot(type: SnapshotType) {
   return { date, type, ...values };
 }
 
+function snapshotPositionsValue(
+  snap: typeof dailySnapshots.$inferSelect,
+): number {
+  return Number.parseFloat(snap.positionsValueEur);
+}
+
 export async function computeDailyReturn(date: string) {
   const db = getDb();
 
@@ -92,23 +98,23 @@ export async function computeDailyReturn(date: string) {
 
   if (!closeSnap) return null;
 
-  let startValue = openSnap
-    ? Number.parseFloat(openSnap.totalValueEur)
-    : null;
+  let startValue = openSnap ? snapshotPositionsValue(openSnap) : null;
 
   if (startValue == null) {
     const [prevClose] = await db
       .select()
       .from(dailySnapshots)
-      .where(eq(dailySnapshots.type, "close"))
+      .where(
+        and(eq(dailySnapshots.type, "close"), lt(dailySnapshots.date, date)),
+      )
       .orderBy(desc(dailySnapshots.date))
       .limit(1);
     startValue = prevClose
-      ? Number.parseFloat(prevClose.totalValueEur)
-      : Number.parseFloat(closeSnap.totalValueEur);
+      ? snapshotPositionsValue(prevClose)
+      : snapshotPositionsValue(closeSnap);
   }
 
-  const endValue = Number.parseFloat(closeSnap.totalValueEur);
+  const endValue = snapshotPositionsValue(closeSnap);
   const returnEur = endValue - startValue;
   const returnPct = startValue > 0 ? endValue / startValue - 1 : 0;
 
