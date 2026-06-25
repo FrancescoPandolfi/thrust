@@ -1,8 +1,8 @@
-import { and, desc, eq, gte, lte } from "drizzle-orm";
-import { format, startOfWeek, subDays } from "date-fns";
-import { getCurrentPortfolioValues, getRomeDate } from "./snapshots";
+import { and, asc, desc, eq, gt, gte, lt, lte } from "drizzle-orm";
+import { addDays, format, parseISO, startOfWeek, subDays } from "date-fns";
+import { getPositionsValueEur, getRomeDate } from "./snapshots";
 import { getDb } from "./db";
-import { dailyReturns, dailySnapshots } from "./schema";
+import { dailySnapshots } from "./schema";
 
 function toNum(v: string | number | null | undefined): number {
   if (v == null) return 0;
@@ -25,11 +25,53 @@ export type WeeklyReturnRow = {
 
 export type ChartPoint = {
   date: string;
-  totalValueEur: number;
+  positionsValueEur: number;
 };
 
 function defaultFromDate(): string {
   return format(subDays(new Date(), 90), "yyyy-MM-dd");
+}
+
+function computeDailyReturnRow(
+  date: string,
+  startValueEur: number,
+  endValueEur: number,
+): DailyReturnRow {
+  const returnEur = endValueEur - startValueEur;
+  const returnPct = startValueEur > 0 ? endValueEur / startValueEur - 1 : 0;
+  return { date, startValueEur, endValueEur, returnEur, returnPct };
+}
+
+async function getSnapshotForDate(date: string) {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(dailySnapshots)
+    .where(eq(dailySnapshots.date, date))
+    .limit(1);
+  return row ?? null;
+}
+
+async function getPreviousSnapshot(beforeDate: string) {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(dailySnapshots)
+    .where(lt(dailySnapshots.date, beforeDate))
+    .orderBy(desc(dailySnapshots.date))
+    .limit(1);
+  return row ?? null;
+}
+
+async function getNextSnapshot(afterDate: string) {
+  const db = getDb();
+  const [row] = await db
+    .select()
+    .from(dailySnapshots)
+    .where(gt(dailySnapshots.date, afterDate))
+    .orderBy(asc(dailySnapshots.date))
+    .limit(1);
+  return row ?? null;
 }
 
 export async function getDailyReturns(
@@ -39,22 +81,35 @@ export async function getDailyReturns(
   const db = getDb();
   const fromDate = from ?? defaultFromDate();
   const toDate = to ?? getRomeDate();
+  const snapshotThrough = format(addDays(parseISO(toDate), 1), "yyyy-MM-dd");
 
   const rows = await db
     .select()
-    .from(dailyReturns)
+    .from(dailySnapshots)
     .where(
-      and(gte(dailyReturns.date, fromDate), lte(dailyReturns.date, toDate)),
+      and(
+        gte(dailySnapshots.date, fromDate),
+        lte(dailySnapshots.date, snapshotThrough),
+      ),
     )
-    .orderBy(desc(dailyReturns.date));
+    .orderBy(asc(dailySnapshots.date));
 
-  return rows.map((r) => ({
-    date: r.date,
-    startValueEur: toNum(r.startValueEur),
-    endValueEur: toNum(r.endValueEur),
-    returnEur: toNum(r.returnEur),
-    returnPct: toNum(r.returnPct),
-  }));
+  const returns: DailyReturnRow[] = [];
+  for (let i = 0; i < rows.length - 1; i++) {
+    const startSnap = rows[i];
+    const endSnap = rows[i + 1];
+    if (startSnap.date < fromDate || startSnap.date > toDate) continue;
+
+    returns.push(
+      computeDailyReturnRow(
+        startSnap.date,
+        toNum(startSnap.positionsValueEur),
+        toNum(endSnap.positionsValueEur),
+      ),
+    );
+  }
+
+  return returns.sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export async function getWeeklyReturns(
@@ -83,7 +138,7 @@ export async function getWeeklyReturns(
     });
 }
 
-export async function getCloseSnapshotsForChart(
+export async function getSnapshotsForChart(
   from?: string,
   to?: string,
 ): Promise<ChartPoint[]> {
@@ -96,60 +151,42 @@ export async function getCloseSnapshotsForChart(
     .from(dailySnapshots)
     .where(
       and(
-        eq(dailySnapshots.type, "close"),
         gte(dailySnapshots.date, fromDate),
         lte(dailySnapshots.date, toDate),
       ),
     )
     .orderBy(dailySnapshots.date);
 
-  return rows.map((r) => ({
-    date: r.date,
-    totalValueEur: toNum(r.positionsValueEur),
+  return rows.map((row) => ({
+    date: row.date,
+    positionsValueEur: toNum(row.positionsValueEur),
   }));
 }
 
 export async function getTodaySummary() {
-  const db = getDb();
   const today = getRomeDate();
 
-  const [openSnap] = await db
-    .select()
-    .from(dailySnapshots)
-    .where(and(eq(dailySnapshots.date, today), eq(dailySnapshots.type, "open")))
-    .limit(1);
-
-  const [closeSnap] = await db
-    .select()
-    .from(dailySnapshots)
-    .where(and(eq(dailySnapshots.date, today), eq(dailySnapshots.type, "close")))
-    .limit(1);
-
-  const [todayReturn] = await db
-    .select()
-    .from(dailyReturns)
-    .where(eq(dailyReturns.date, today))
-    .limit(1);
+  const todaySnap = await getSnapshotForDate(today);
+  const prevSnap = await getPreviousSnapshot(today);
+  const nextSnap = await getNextSnapshot(today);
 
   let liveValue: number | null = null;
-  if (!closeSnap) {
-    try {
-      const live = await getCurrentPortfolioValues();
-      liveValue = live.positionsValueEur;
-    } catch {
-      liveValue = null;
-    }
+  try {
+    liveValue = await getPositionsValueEur(false);
+  } catch {
+    liveValue = null;
   }
 
-  const startValue = openSnap ? toNum(openSnap.positionsValueEur) : null;
-  const endValue = closeSnap
-    ? toNum(closeSnap.positionsValueEur)
-    : liveValue;
+  const startValue = todaySnap
+    ? toNum(todaySnap.positionsValueEur)
+    : prevSnap
+      ? toNum(prevSnap.positionsValueEur)
+      : null;
+  const endValue = liveValue;
 
-  let returnEur: number | null = todayReturn ? toNum(todayReturn.returnEur) : null;
-  let returnPct: number | null = todayReturn ? toNum(todayReturn.returnPct) : null;
-
-  if (returnEur == null && startValue != null && endValue != null) {
+  let returnEur: number | null = null;
+  let returnPct: number | null = null;
+  if (startValue != null && endValue != null) {
     returnEur = endValue - startValue;
     returnPct = startValue > 0 ? endValue / startValue - 1 : 0;
   }
@@ -160,6 +197,6 @@ export async function getTodaySummary() {
     endValueEur: endValue,
     returnEur,
     returnPct,
-    inProgress: !closeSnap,
+    inProgress: nextSnap == null,
   };
 }

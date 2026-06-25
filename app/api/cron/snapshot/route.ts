@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { isAuthorizedCron } from "@/lib/cron-auth";
 import { captureSnapshot } from "@/lib/snapshots";
 import { logProductionError } from "@/lib/errors";
-import type { SnapshotType } from "@/lib/schema";
 
 export const dynamic = "force-dynamic";
 
@@ -11,22 +10,12 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { searchParams } = new URL(request.url);
-  const type = searchParams.get("type") as SnapshotType | null;
-
-  if (type !== "open" && type !== "close") {
-    return NextResponse.json(
-      { error: "Invalid type. Use open or close." },
-      { status: 400 },
-    );
-  }
-
   try {
-    const result = await captureSnapshot(type);
+    const result = await captureSnapshot();
     return NextResponse.json({ ok: true, snapshot: result });
   } catch (error) {
     console.error(error);
-    await logProductionError("cron/snapshot", error, { type });
+    await logProductionError("cron/snapshot", error, {});
     return NextResponse.json(
       { error: "Failed to capture snapshot" },
       { status: 500 },

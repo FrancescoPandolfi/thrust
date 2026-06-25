@@ -14,14 +14,14 @@ type TodaySummary = {
 
 type Props = {
   today: TodaySummary;
-  chart: { date: string; totalValueEur: number }[];
+  chart: { date: string; positionsValueEur: number }[];
 };
 
 export function ReturnsOverview({ today, chart }: Props) {
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_min(100%,360px)] xl:grid-cols-[minmax(0,1fr)_420px] lg:items-stretch">
       <ReturnsSummary {...today} />
-      <PortfolioAreaChart data={chart} compact title="Portfolio value" />
+      <PortfolioAreaChart data={chart} compact title="Positions value" />
     </div>
   );
 }

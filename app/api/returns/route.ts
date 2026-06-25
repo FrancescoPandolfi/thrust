@@ -4,7 +4,7 @@ import { logProductionError } from "@/lib/errors";
 import {
   getDailyReturns,
   getWeeklyReturns,
-  getCloseSnapshotsForChart,
+  getSnapshotsForChart,
 } from "@/lib/returns";
 
 export const dynamic = "force-dynamic";
@@ -26,7 +26,7 @@ export async function GET(request: Request) {
     }
 
     const daily = await getDailyReturns(from, to);
-    const chart = await getCloseSnapshotsForChart(from, to);
+    const chart = await getSnapshotsForChart(from, to);
     return NextResponse.json({ period: "day", data: daily, chart });
   } catch (error) {
     console.error(error);

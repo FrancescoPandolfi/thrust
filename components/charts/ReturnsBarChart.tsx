@@ -1,6 +1,6 @@
 "use client";
 
-import { formatPct } from "@/lib/format";
+import { formatEur, formatPct } from "@/lib/format";
 import {
   Bar,
   BarChart,
@@ -17,13 +17,20 @@ import {
   CHART_GRID,
   CHART_NEGATIVE,
   CHART_POSITIVE,
-  chartTooltipStyle,
+  chartTooltipContentStyle,
+  chartTooltipCursor,
+  chartTooltipWrapperStyle,
 } from "@/components/charts/chartTheme";
+
+type ReturnChartRow = {
+  returnPct: number;
+  returnEur: number;
+};
 
 type Props = {
   data:
-    | { date: string; returnPct: number }[]
-    | { week: string; returnPct: number }[];
+    | ({ date: string } & ReturnChartRow)[]
+    | ({ week: string } & ReturnChartRow)[];
   indexKey: "date" | "week";
   title: string;
 };
@@ -34,13 +41,14 @@ function ReturnsTooltip({
   label,
 }: {
   active?: boolean;
-  payload?: { value: number }[];
+  payload?: { payload: ReturnChartRow }[];
   label?: string;
 }) {
   if (!active || !payload?.length || label == null) return null;
 
-  const value = payload[0].value;
-  const positive = value >= 0;
+  const { returnEur, returnPct } = payload[0].payload;
+  const positive = returnEur >= 0;
+  const prefix = positive ? "+" : "";
 
   return (
     <div className="rounded-lg border border-zinc-700 bg-zinc-900 px-3 py-2 text-sm shadow-lg">
@@ -50,7 +58,9 @@ function ReturnsTooltip({
           positive ? "text-emerald-400" : "text-rose-400"
         }`}
       >
-        {formatPct(value)}
+        {prefix}
+        {formatEur(returnEur)} ({prefix}
+        {formatPct(returnPct)})
       </p>
     </div>
   );
@@ -64,7 +74,7 @@ export function ReturnsBarChart({ data, indexKey, title }: Props) {
           {title}
         </h2>
         <p className="mt-4 py-8 text-center text-sm text-zinc-400">
-          No return history yet. Daily returns are computed after the close snapshot.
+          No return history yet. Daily returns are computed after the midnight snapshot.
         </p>
       </div>
     );
@@ -97,7 +107,12 @@ export function ReturnsBarChart({ data, indexKey, title }: Props) {
               tickFormatter={(value: number) => formatPct(value)}
             />
             <ReferenceLine y={0} stroke={CHART_GRID} />
-            <Tooltip content={<ReturnsTooltip />} {...chartTooltipStyle} />
+            <Tooltip
+              content={<ReturnsTooltip />}
+              cursor={chartTooltipCursor}
+              wrapperStyle={chartTooltipWrapperStyle}
+              contentStyle={chartTooltipContentStyle}
+            />
             <Bar dataKey="returnPct" radius={[4, 4, 0, 0]} maxBarSize={40}>
               {data.map((entry, index) => (
                 <Cell

@@ -17,7 +17,6 @@
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.2",
-    "@tremor/react": "^3.18.7",
     "bcryptjs": "^3.0.2",
     "date-fns": "^4.1.0",
     "drizzle-orm": "^0.44.2",

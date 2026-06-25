@@ -14,11 +14,13 @@ import {
   CHART_ACCENT,
   CHART_AXIS,
   CHART_GRID,
-  chartTooltipStyle,
+  chartTooltipContentStyle,
+  chartTooltipCursor,
+  chartTooltipWrapperStyle,
 } from "@/components/charts/chartTheme";
 
 type Props = {
-  data: { date: string; totalValueEur: number }[];
+  data: { date: string; positionsValueEur: number }[];
   compact?: boolean;
   title?: string;
 };
@@ -71,7 +73,7 @@ function EmptyChart({
           compact ? "mt-auto py-6 text-center" : "mt-4 py-8 text-center"
         }`}
       >
-        No portfolio history yet. Close snapshots appear after the daily cron runs.
+        No portfolio history yet. Snapshots are captured daily at midnight (Europe/Rome).
       </p>
     </div>
   );
@@ -80,7 +82,7 @@ function EmptyChart({
 export function PortfolioAreaChart({
   data,
   compact = false,
-  title = "Portfolio value over time",
+  title = "Positions value over time",
 }: Props) {
   if (data.length === 0) {
     return <EmptyChart compact={compact} title={title} />;
@@ -134,10 +136,15 @@ export function PortfolioAreaChart({
               width={yAxisWidth}
               tickFormatter={tickFormatter}
             />
-            <Tooltip content={<PortfolioTooltip />} {...chartTooltipStyle} />
+            <Tooltip
+              content={<PortfolioTooltip />}
+              cursor={chartTooltipCursor}
+              wrapperStyle={chartTooltipWrapperStyle}
+              contentStyle={chartTooltipContentStyle}
+            />
             <Area
               type="monotone"
-              dataKey="totalValueEur"
+              dataKey="positionsValueEur"
               stroke={CHART_ACCENT}
               strokeWidth={2}
               fill="url(#portfolioValueFill)"

@@ -16,7 +16,7 @@ export function ReturnsTable({ rows, embedded = false }: Props) {
             : "rounded-xl border border-zinc-800 bg-zinc-900 p-8 text-center text-sm text-zinc-400"
         }
       >
-        No return history yet. Snapshots are captured daily at open and close.
+        No return history yet. A daily snapshot runs at midnight (Europe/Rome).
       </div>
     );
   }

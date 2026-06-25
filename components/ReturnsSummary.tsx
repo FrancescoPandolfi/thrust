@@ -40,11 +40,11 @@ export function ReturnsSummary({
         hint={inProgress ? "Day in progress" : undefined}
       />
       <MetricCard
-        label="Start value (open)"
+        label="Start value (previous day)"
         value={startValueEur != null ? formatEur(startValueEur) : "—"}
       />
       <MetricCard
-        label={inProgress ? "Current value" : "End value (close)"}
+        label={inProgress ? "Current value" : "End value"}
         value={endValueEur != null ? formatEur(endValueEur) : "—"}
       />
       <MetricCard

@@ -1,6 +1,6 @@
 import { ReturnsPageClient } from "@/components/ReturnsPageClient";
 import {
-  getCloseSnapshotsForChart,
+  getSnapshotsForChart,
   getDailyReturns,
   getTodaySummary,
   getWeeklyReturns,
@@ -39,7 +39,7 @@ export default async function ReturnsPage({ searchParams }: Props) {
     getTodaySummary(),
     getDailyReturns(from),
     getWeeklyReturns(from),
-    getCloseSnapshotsForChart(from),
+    getSnapshotsForChart(from),
   ]);
 
   return (

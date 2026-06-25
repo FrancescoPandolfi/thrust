@@ -4,6 +4,21 @@ export const CHART_AXIS = "rgb(161 161 170)";
 export const CHART_POSITIVE = "#34d399";
 export const CHART_NEGATIVE = "#fb7185";
 
+export const chartTooltipCursor = { fill: "rgb(39 39 42 / 0.35)" };
+
+export const chartTooltipWrapperStyle = {
+  outline: "none",
+  zIndex: 10,
+};
+
+/** Wrapper for custom tooltip content — avoid Recharts default white box */
+export const chartTooltipContentStyle = {
+  backgroundColor: "transparent",
+  border: "none",
+  padding: 0,
+  boxShadow: "none",
+};
+
 export const chartTooltipStyle = {
   contentStyle: {
     backgroundColor: "rgb(24 24 27)",

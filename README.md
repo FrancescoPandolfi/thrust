@@ -8,7 +8,7 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
 - **Tailwind CSS v4** (dark-only UI)
 - **Drizzle ORM** + **Neon Postgres** (`@neondatabase/serverless`)
 - **Yahoo Finance** + **CoinGecko** + **Frankfurter** for market data
-- **@tremor/react** for charts and KPI cards
+- **Recharts** for return and portfolio history charts
 - **iron-session** + **bcryptjs** for password auth
 
 ## Local development
@@ -67,7 +67,7 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
 4. Add environment variables in the Vercel project settings:
    - `SESSION_SECRET`
    - `CRON_SECRET`
-5. Deploy. On first deploy, run migrations:
+5. Deploy. On first deploy, push the schema:
 
    ```bash
    npx drizzle-kit push
@@ -81,14 +81,18 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
    DATABASE_URL="..." SEED_USER_EMAIL="..." SEED_USER_PASSWORD="..." npm run db:seed
    ```
 
-7. **Vercel Cron** jobs are configured in `vercel.json`:
-   Vercel Cron jobs (UTC), prices 5 min before each snapshot as cache fallback:
-   - **06:35 UTC** — price refresh
-   - **06:40 UTC** — open snapshot (~07:40 CET)
-   - **21:55 UTC** — price refresh
-   - **22:00 UTC** — close snapshot (~23:00 CET)
+7. **Vercel Cron** (configured in `vercel.json`):
+   - **22:00 UTC** — daily snapshot at midnight **Europe/Rome** (CEST: 00:00 Rome; CET: 23:00 Rome)
 
    Vercel sends `Authorization: Bearer <CRON_SECRET>` automatically when `CRON_SECRET` is set.
+
+## Returns model
+
+- **Snapshots** store **positions value only** (ETF + crypto). Cash is excluded from returns and tracked separately on `/cash`.
+- One snapshot per calendar day (`daily_snapshots.date` primary key).
+- **Daily return for day D** = snapshot(D+1) − snapshot(D). `startValueEur` is snapshot(D), `endValueEur` is snapshot(D+1); `returnEur` and `returnPct` are derived in code, not stored.
+- `return_pct` is a **decimal ratio** (e.g. `0.00535` = 0.54%). The UI formats it for display.
+- **Today** uses the latest snapshot as start and live portfolio value as end until the next midnight snapshot closes the day.
 
 ## Scripts
 
@@ -99,12 +103,13 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
 | `npm run db:generate` | Generate Drizzle migrations |
 | `npm run db:push` | Push schema to database |
 | `npm run db:seed` | Seed exchanges, FX quote source, and first user |
+| `npm run db:check` | Verify database connectivity |
 
 ## Pages
 
 - `/` — Portfolio dashboard with metrics, allocation donut, and editable positions table
-- `/cash` — Cash balance management
-- `/returns` — Daily/weekly return charts and history
+- `/cash` — Cash balance management (not included in return calculations)
+- `/returns` — Daily/weekly return charts and positions value history
 - `/errors` — Production error log dashboard
 - `/login` — Email + password login
 
@@ -112,5 +117,5 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
 
 - `GET /api/quotes` — Fetch cached quotes
 - `POST /api/quotes` — Refresh quotes from market data providers
-- `GET /api/returns?period=day|week&from=&to=` — Return history
-- `GET /api/cron/snapshot?type=open|close` — Cron snapshot (Bearer auth)
+- `GET /api/returns?period=day|week&from=&to=` — Return history and chart snapshots
+- `GET /api/cron/snapshot` — Capture midnight snapshot and recompute returns (Bearer auth)

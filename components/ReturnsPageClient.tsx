@@ -59,6 +59,7 @@ export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
     .map((d) => ({
       date: formatDate(d.date),
       returnPct: d.returnPct,
+      returnEur: d.returnEur,
     }));
 
   const weeklyChartData = [...weekly]
@@ -66,20 +67,21 @@ export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
     .map((w) => ({
       week: formatDate(w.week),
       returnPct: w.returnPct,
+      returnEur: w.returnEur,
     }));
 
   const chartPoints = new Map<string, number>();
   for (const point of chart) {
-    chartPoints.set(point.date, point.totalValueEur);
+    chartPoints.set(point.date, point.positionsValueEur);
   }
   if (today.endValueEur != null) {
     chartPoints.set(today.date, today.endValueEur);
   }
   const chartData = [...chartPoints.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, totalValueEur]) => ({
+    .map(([date, positionsValueEur]) => ({
       date: formatDate(date),
-      totalValueEur,
+      positionsValueEur,
     }));
 
   return (
@@ -138,13 +140,13 @@ export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
           <ReturnsBarChart
             data={dailyChartData}
             indexKey="date"
-            title="Daily returns %"
+            title="Daily returns"
           />
         ) : (
           <ReturnsBarChart
             data={weeklyChartData}
             indexKey="week"
-            title="Weekly returns %"
+            title="Weekly returns"
           />
         )}
       </section>

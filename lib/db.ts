@@ -14,10 +14,3 @@ export function getDb(): NeonHttpDatabase<typeof schema> {
   _db = drizzle(sql, { schema });
   return _db;
 }
-
-/** @deprecated use getDb() */
-export const db = new Proxy({} as NeonHttpDatabase<typeof schema>, {
-  get(_target, prop) {
-    return Reflect.get(getDb(), prop);
-  },
-});

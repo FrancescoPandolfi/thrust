@@ -1,8 +1,5 @@
 {
   "crons": [
-    { "path": "/api/cron/prices", "schedule": "55 21 * * *" },
-    { "path": "/api/cron/snapshot?type=close", "schedule": "0 22 * * *" },
-    { "path": "/api/cron/prices", "schedule": "25 22 * * *" },
-    { "path": "/api/cron/snapshot?type=open", "schedule": "30 22 * * *" }
+    { "path": "/api/cron/snapshot", "schedule": "0 22 * * *" }
   ]
 }
