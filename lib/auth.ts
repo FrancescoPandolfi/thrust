@@ -1,7 +1,8 @@
 import { getIronSession } from "iron-session";
 import { cookies } from "next/headers";
 import { getSessionOptions, type SessionData } from "@/lib/session-config";
-import { authenticateUser } from "@/lib/users";
+import type { UserRole } from "@/lib/schema";
+import { authenticateUser, findUserById } from "@/lib/users";
 
 export type { SessionData } from "@/lib/session-config";
 export { getSessionOptions } from "@/lib/session-config";
@@ -23,6 +24,43 @@ export async function getCurrentUserId(): Promise<string | null> {
   return session.userId;
 }
 
+export async function getCurrentUserRole(): Promise<UserRole | null> {
+  const session = await getSession();
+  if (!session.isLoggedIn || typeof session.userId !== "string") {
+    return null;
+  }
+  if (session.role) {
+    return session.role;
+  }
+
+  const user = await findUserById(session.userId);
+  if (!user) {
+    return null;
+  }
+
+  session.role = user.role;
+  await session.save();
+  return user.role;
+}
+
+export async function requireAuth(): Promise<void> {
+  if (!(await isAuthenticated())) {
+    throw new Error("Unauthorized");
+  }
+}
+
+export async function requireWriteAccess(): Promise<void> {
+  await requireAuth();
+  const role = await getCurrentUserRole();
+  if (role !== "admin") {
+    throw new Error("Forbidden");
+  }
+}
+
+export async function requireAdmin(): Promise<void> {
+  await requireWriteAccess();
+}
+
 export async function login(
   email: string,
   password: string,
@@ -35,6 +73,7 @@ export async function login(
   const session = await getSession();
   session.isLoggedIn = true;
   session.userId = user.id;
+  session.role = user.role;
   await session.save();
   return true;
 }

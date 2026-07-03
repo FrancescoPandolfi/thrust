@@ -15,6 +15,8 @@ export const categoryEnum = pgEnum("category", [
   "crypto",
 ]);
 
+export const userRoleEnum = pgEnum("user_role", ["admin", "viewer"]);
+
 export const exchanges = pgTable("exchanges", {
   micCode: text("mic_code").primaryKey(),
   yahooSuffix: text("yahoo_suffix").notNull(),
@@ -36,7 +38,7 @@ export const positions = pgTable("positions", {
   coingeckoId: text("coingecko_id"),
   title: text("title").notNull(),
   category: categoryEnum("category").notNull(),
-  shares: numeric("shares", { precision: 18, scale: 8 }).notNull(),
+  shares: numeric("shares", { precision: 18, scale: 6 }).notNull(),
   loadValueEur: numeric("load_value_eur", { precision: 18, scale: 2 }).notNull(),
   sortOrder: numeric("sort_order", { precision: 5, scale: 0 }).notNull().default("0"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -62,6 +64,23 @@ export const priceCache = pgTable(
   (table) => [primaryKey({ columns: [table.isin, table.micCode] })],
 );
 
+/** Capital added to or withdrawn from positions (positive = in, negative = out). */
+export const capitalFlows = pgTable("capital_flows", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  date: date("date").notNull(),
+  amountEur: numeric("amount_eur", { precision: 18, scale: 2 }).notNull(),
+  positionId: uuid("position_id").references(() => positions.id, {
+    onDelete: "set null",
+  }),
+  /** Snapshot of position title at the time of the flow. */
+  title: text("title"),
+  /** Shares bought (+) or sold (−) in this operation. */
+  sharesDelta: numeric("shares_delta", { precision: 18, scale: 6 }),
+  createdAt: timestamp("created_at", { withTimezone: true })
+    .notNull()
+    .defaultNow(),
+});
+
 /** One row per calendar day: positions value at midnight Europe/Rome. */
 export const dailySnapshots = pgTable("daily_snapshots", {
   date: date("date").primaryKey(),
@@ -74,20 +93,12 @@ export const dailySnapshots = pgTable("daily_snapshots", {
     .defaultNow(),
 });
 
-export const productionErrors = pgTable("production_errors", {
-  id: uuid("id").primaryKey().defaultRandom(),
-  source: text("source").notNull(),
-  message: text("message").notNull(),
-  stack: text("stack"),
-  context: text("context"),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
-
 export const users = pgTable("users", {
   id: uuid("id").primaryKey().defaultRandom(),
   email: text("email").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
   name: text("name"),
+  role: userRoleEnum("role").notNull().default("admin"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
@@ -96,7 +107,8 @@ export type Position = typeof positions.$inferSelect;
 export type Exchange = typeof exchanges.$inferSelect;
 export type QuoteSource = typeof quoteSources.$inferSelect;
 export type CashBalance = typeof cashBalances.$inferSelect;
+export type CapitalFlow = typeof capitalFlows.$inferSelect;
 export type DailySnapshot = typeof dailySnapshots.$inferSelect;
 export type Category = (typeof categoryEnum.enumValues)[number];
-export type ProductionError = typeof productionErrors.$inferSelect;
+export type UserRole = (typeof userRoleEnum.enumValues)[number];
 export type User = typeof users.$inferSelect;

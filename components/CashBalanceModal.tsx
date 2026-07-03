@@ -3,7 +3,7 @@
 import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { addCashBalance, updateCashBalance } from "@/lib/actions/cash";
-import { parseDecimal } from "@/lib/format";
+import { formatNumber, parseDecimal } from "@/lib/format";
 import type { CashBalance } from "@/lib/schema";
 
 type Props = {
@@ -19,7 +19,9 @@ export function CashBalanceModal({ mode, balance, onClose }: Props) {
   const amountId = `${formId}-amount`;
 
   const [label, setLabel] = useState(balance?.label ?? "");
-  const [amount, setAmount] = useState(balance?.amountEur ?? "");
+  const [amount, setAmount] = useState(() =>
+    balance ? formatNumber(Number.parseFloat(balance.amountEur), 2) : "",
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);

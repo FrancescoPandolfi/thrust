@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { formatEur, formatEurAxis } from "@/lib/format";
 import {
   Area,
@@ -24,6 +25,47 @@ type Props = {
   compact?: boolean;
   title?: string;
 };
+
+type YScaleMode = "full" | "fit" | "zoom";
+
+const Y_SCALE_MODES = [
+  { id: "full" as const, label: "Full", title: "Axis from zero" },
+  { id: "fit" as const, label: "Auto", title: "Fit data range" },
+  { id: "zoom" as const, label: "Zoom", title: "Tight zoom on variations" },
+] as const;
+
+function paddedValueDomain(values: number[], paddingRatio: number): [number, number] {
+  const min = Math.min(...values);
+  const max = Math.max(...values);
+  const span = max - min;
+
+  if (span === 0) {
+    const cushion = Math.max(Math.abs(min) * 0.02, 500);
+    return [min - cushion, max + cushion];
+  }
+
+  const cushion = span * paddingRatio;
+  return [min - cushion, max + cushion];
+}
+
+function valueDomain(values: number[], mode: YScaleMode): [number, number] {
+  const max = Math.max(...values);
+  const span = Math.max(...values) - Math.min(...values);
+  const topCushion = Math.max(span * 0.05, max * 0.02, 500);
+
+  switch (mode) {
+    case "full":
+      return [0, max + topCushion];
+    case "fit":
+      return paddedValueDomain(values, 0.1);
+    case "zoom":
+      return paddedValueDomain(values, 0.02);
+    default: {
+      const _exhaustive: never = mode;
+      return _exhaustive;
+    }
+  }
+}
 
 function PortfolioTooltip({
   active,
@@ -79,11 +121,50 @@ function EmptyChart({
   );
 }
 
+function ScaleToggle({
+  value,
+  onChange,
+  compact,
+}: {
+  value: YScaleMode;
+  onChange: (mode: YScaleMode) => void;
+  compact: boolean;
+}) {
+  return (
+    <div
+      className={`flex shrink-0 gap-0.5 rounded-md border border-zinc-800 bg-zinc-950 ${
+        compact ? "p-0.5" : "p-1"
+      }`}
+    >
+      {Y_SCALE_MODES.map((mode) => (
+        <button
+          key={mode.id}
+          type="button"
+          title={mode.title}
+          aria-pressed={value === mode.id}
+          onClick={() => onChange(mode.id)}
+          className={`cursor-pointer rounded px-2 py-0.5 font-medium transition-colors ${
+            compact ? "text-[10px]" : "text-xs"
+          } ${
+            value === mode.id
+              ? "bg-zinc-800 text-accent"
+              : "text-zinc-500 hover:bg-zinc-800/50 hover:text-zinc-300"
+          }`}
+        >
+          {mode.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function PortfolioAreaChart({
   data,
   compact = false,
   title = "Positions value over time",
 }: Props) {
+  const [scaleMode, setScaleMode] = useState<YScaleMode>("fit");
+
   if (data.length === 0) {
     return <EmptyChart compact={compact} title={title} />;
   }
@@ -91,6 +172,8 @@ export function PortfolioAreaChart({
   const chartHeight = compact ? "min-h-[10rem] h-40" : "h-72";
   const yAxisWidth = compact ? 72 : 88;
   const tickFormatter = compact ? formatEurAxis : formatEur;
+  const values = data.map((point) => point.positionsValueEur);
+  const yDomain = valueDomain(values, scaleMode);
 
   return (
     <div
@@ -98,15 +181,18 @@ export function PortfolioAreaChart({
         compact ? "flex h-full min-h-[250px] flex-col p-4" : "p-4"
       }`}
     >
-      <h2
-        className={
-          compact
-            ? "text-xs font-medium uppercase tracking-wide text-zinc-400"
-            : "text-sm font-medium text-zinc-100"
-        }
-      >
-        {title}
-      </h2>
+      <div className="flex items-start justify-between gap-2">
+        <h2
+          className={
+            compact
+              ? "text-xs font-medium uppercase tracking-wide text-zinc-400"
+              : "text-sm font-medium text-zinc-100"
+          }
+        >
+          {title}
+        </h2>
+        <ScaleToggle value={scaleMode} onChange={setScaleMode} compact={compact} />
+      </div>
       <div
         className={`${compact ? "mt-3 min-h-0 flex-1 overflow-visible" : "mt-4"} ${chartHeight}`}
       >
@@ -130,6 +216,7 @@ export function PortfolioAreaChart({
               minTickGap={24}
             />
             <YAxis
+              domain={yDomain}
               tick={{ fill: CHART_AXIS, fontSize: compact ? 10 : 11 }}
               axisLine={false}
               tickLine={false}

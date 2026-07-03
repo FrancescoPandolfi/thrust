@@ -2,12 +2,10 @@
 
 import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  updatePositionLoadValue,
-  updatePositionShares,
-} from "@/lib/actions/positions";
+import { updatePosition } from "@/lib/actions/positions";
 import type { ComputedPosition } from "@/lib/calculations";
-import { formatEur, formatNumber, parseDecimal } from "@/lib/format";
+import { CopyValueButton } from "@/components/CopyValueButton";
+import { formatEur, formatNumber, parseDecimal, SHARES_DECIMALS } from "@/lib/format";
 
 type Props = {
   position: ComputedPosition;
@@ -43,20 +41,8 @@ function ModeToggle({
       <button
         type="button"
         disabled={disabled}
-        onClick={() => onChange("set")}
-        className={`rounded-md px-2 py-1 font-medium transition-colors ${
-          mode === "set"
-            ? "bg-zinc-700 text-zinc-100"
-            : "text-zinc-400 hover:text-zinc-200"
-        }`}
-      >
-        Set
-      </button>
-      <button
-        type="button"
-        disabled={disabled}
         onClick={() => onChange("adjust")}
-        className={`rounded-md px-2 py-1 font-medium transition-colors ${
+        className={`cursor-pointer rounded-md px-2 py-1 font-medium transition-colors disabled:cursor-not-allowed ${
           mode === "adjust"
             ? "bg-zinc-700 text-zinc-100"
             : "text-zinc-400 hover:text-zinc-200"
@@ -64,7 +50,48 @@ function ModeToggle({
       >
         Adjust
       </button>
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => onChange("set")}
+        className={`cursor-pointer rounded-md px-2 py-1 font-medium transition-colors disabled:cursor-not-allowed ${
+          mode === "set"
+            ? "bg-zinc-700 text-zinc-100"
+            : "text-zinc-400 hover:text-zinc-200"
+        }`}
+      >
+        Set
+      </button>
     </div>
+  );
+}
+
+function CopyableCurrentValue({
+  display,
+  rawValue,
+  copyDecimals,
+  disabled,
+  label,
+}: {
+  display: string;
+  rawValue: string;
+  copyDecimals: number;
+  disabled: boolean;
+  label: string;
+}) {
+  return (
+    <p className="mb-2 flex items-center gap-1.5 text-xs text-zinc-500">
+      <span>
+        Current:{" "}
+        <span className="font-mono tabular-nums text-zinc-400">{display}</span>
+      </span>
+      <CopyValueButton
+        value={rawValue}
+        decimals={copyDecimals}
+        label={label}
+        disabled={disabled}
+      />
+    </p>
   );
 }
 
@@ -72,9 +99,10 @@ function NumericFieldEditor({
   id,
   label,
   current,
+  rawCurrent,
+  copyDecimals,
   input,
   mode,
-  decimals,
   formatPreview,
   disabled,
   onInputChange,
@@ -83,9 +111,10 @@ function NumericFieldEditor({
   id: string;
   label: string;
   current: number;
+  rawCurrent: string;
+  copyDecimals: number;
   input: string;
   mode: EditMode;
-  decimals: number;
   formatPreview: (value: number) => string;
   disabled: boolean;
   onInputChange: (value: string) => void;
@@ -93,11 +122,6 @@ function NumericFieldEditor({
 }) {
   const finalValue = computeFinalValue(mode, current, input);
   const hasChange = finalValue !== current;
-
-  function applyDelta(delta: number) {
-    const next = parseDecimal(input) + delta;
-    onInputChange(formatFieldValue(next, decimals));
-  }
 
   return (
     <div>
@@ -108,38 +132,24 @@ function NumericFieldEditor({
         <ModeToggle mode={mode} onChange={onModeChange} disabled={disabled} />
       </div>
 
-      <p className="mb-2 text-xs text-zinc-500">
-        Current: {formatPreview(current)}
-      </p>
+      <CopyableCurrentValue
+        display={formatPreview(current)}
+        rawValue={rawCurrent}
+        copyDecimals={copyDecimals}
+        disabled={disabled}
+        label={`Copy ${label.toLowerCase()}`}
+      />
 
-      <div className="flex gap-2">
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => applyDelta(-1)}
-          className="shrink-0 rounded-lg border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
-          aria-label={`Subtract 1 from ${label}`}
-        >
-          −
-        </button>
-        <input
-          id={id}
-          value={input}
-          disabled={disabled}
-          placeholder={mode === "adjust" ? "e.g. 100 or -50" : undefined}
-          onChange={(event) => onInputChange(event.target.value)}
-          className="min-w-0 flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono tabular-nums text-zinc-100 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
-        />
-        <button
-          type="button"
-          disabled={disabled}
-          onClick={() => applyDelta(1)}
-          className="shrink-0 rounded-lg border border-zinc-700 px-3 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
-          aria-label={`Add 1 to ${label}`}
-        >
-          +
-        </button>
-      </div>
+      <input
+        id={id}
+        type="text"
+        inputMode="decimal"
+        value={input}
+        disabled={disabled}
+        placeholder={mode === "adjust" ? "e.g. 100 or -50" : undefined}
+        onChange={(event) => onInputChange(event.target.value)}
+        className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono tabular-nums text-zinc-100 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
+      />
 
       {mode === "adjust" && (
         <p className="mt-2 text-xs text-zinc-400">
@@ -168,10 +178,10 @@ export function PositionEditModal({ position, onClose }: Props) {
   const currentShares = Number.parseFloat(position.shares);
   const currentLoadValue = Number.parseFloat(position.loadValueEur);
 
-  const [sharesMode, setSharesMode] = useState<EditMode>("set");
-  const [loadValueMode, setLoadValueMode] = useState<EditMode>("set");
-  const [shares, setShares] = useState(position.shares);
-  const [loadValue, setLoadValue] = useState(position.loadValueEur);
+  const [sharesMode, setSharesMode] = useState<EditMode>("adjust");
+  const [loadValueMode, setLoadValueMode] = useState<EditMode>("adjust");
+  const [shares, setShares] = useState("");
+  const [loadValue, setLoadValue] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
@@ -214,16 +224,11 @@ export function PositionEditModal({ position, onClose }: Props) {
         loadValue,
       );
 
-      const updates: Promise<void>[] = [];
-      if (nextShares !== currentShares) {
-        updates.push(updatePositionShares(position.id, nextShares));
-      }
-      if (nextLoadValue !== currentLoadValue) {
-        updates.push(updatePositionLoadValue(position.id, nextLoadValue));
-      }
-
-      if (updates.length > 0) {
-        await Promise.all(updates);
+      if (nextShares !== currentShares || nextLoadValue !== currentLoadValue) {
+        await updatePosition(position.id, {
+          shares: nextShares,
+          loadValueEur: nextLoadValue,
+        });
         router.refresh();
       }
 
@@ -271,17 +276,18 @@ export function PositionEditModal({ position, onClose }: Props) {
             id={sharesId}
             label="Shares"
             current={currentShares}
+            rawCurrent={position.shares}
+            copyDecimals={SHARES_DECIMALS}
             input={shares}
             mode={sharesMode}
-            decimals={6}
-            formatPreview={(value) => formatNumber(value, 6)}
+            formatPreview={(value) => formatNumber(value, SHARES_DECIMALS)}
             disabled={saving}
             onInputChange={setShares}
             onModeChange={(mode) => {
               setSharesMode(mode);
               setShares(
                 mode === "set"
-                  ? formatFieldValue(currentShares, 6)
+                  ? formatFieldValue(currentShares, SHARES_DECIMALS)
                   : "",
               );
             }}
@@ -291,9 +297,10 @@ export function PositionEditModal({ position, onClose }: Props) {
             id={loadValueId}
             label="Load value (EUR)"
             current={currentLoadValue}
+            rawCurrent={position.loadValueEur}
+            copyDecimals={2}
             input={loadValue}
             mode={loadValueMode}
-            decimals={2}
             formatPreview={formatEur}
             disabled={saving}
             onInputChange={setLoadValue}
@@ -318,14 +325,14 @@ export function PositionEditModal({ position, onClose }: Props) {
               type="button"
               disabled={saving}
               onClick={requestClose}
-              className="rounded-lg px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 disabled:opacity-50"
+              className="cursor-pointer rounded-lg px-4 py-2 text-sm font-medium text-zinc-300 hover:bg-zinc-800 disabled:cursor-not-allowed disabled:opacity-50"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={saving}
-              className="rounded-lg bg-accent px-4 py-2 text-sm font-medium text-zinc-950 transition-[filter] hover:brightness-95 disabled:opacity-50"
+              className="cursor-pointer rounded-lg bg-accent px-4 py-2 text-sm font-medium text-zinc-950 transition-[filter] hover:brightness-95 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {saving ? "Saving…" : "Save"}
             </button>

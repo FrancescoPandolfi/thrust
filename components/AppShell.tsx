@@ -7,18 +7,27 @@ import {
   NavigationProgressProvider,
   useNavigationProgress,
 } from "@/components/NavigationProgress";
+import { PriceAutoRefresh } from "@/components/PriceAutoRefresh";
+import type { UserRole } from "@/lib/schema";
 
 const NAV = [
   { href: "/", label: "Portfolio" },
   { href: "/cash", label: "Cash" },
   { href: "/returns", label: "Returns" },
-  { href: "/errors", label: "Errors" },
+  { href: "/flows", label: "Flows" },
   { href: "/settings", label: "Settings" },
 ];
 
-function AppShellNav() {
+const ADMIN_NAV = [{ href: "/settings/users", label: "Users" }];
+
+type AppShellNavProps = {
+  role: UserRole;
+};
+
+function AppShellNav({ role }: AppShellNavProps) {
   const pathname = usePathname();
   const { start } = useNavigationProgress();
+  const navItems = role === "admin" ? [...NAV, ...ADMIN_NAV] : NAV;
 
   return (
     <>
@@ -34,7 +43,7 @@ function AppShellNav() {
             Thrust
           </Link>
           <nav className="hidden items-center gap-1 sm:flex">
-            {NAV.map((item) => {
+            {navItems.map((item) => {
               const active =
                 item.href === "/"
                   ? pathname === "/"
@@ -58,17 +67,24 @@ function AppShellNav() {
             })}
           </nav>
         </div>
-        <form action={logoutAction}>
-          <button
-            type="submit"
-            className="cursor-pointer rounded-md bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
-          >
-            Logout
-          </button>
-        </form>
+        <div className="flex items-center gap-3">
+          {role === "viewer" && (
+            <span className="hidden rounded-md border border-zinc-700 bg-zinc-800/60 px-2.5 py-1 text-xs font-medium text-zinc-400 sm:inline">
+              Read-only
+            </span>
+          )}
+          <form action={logoutAction}>
+            <button
+              type="submit"
+              className="cursor-pointer rounded-md bg-zinc-800 px-3 py-1.5 text-sm text-zinc-200 transition-colors hover:bg-zinc-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+            >
+              Logout
+            </button>
+          </form>
+        </div>
       </div>
       <nav className="flex gap-1 border-t border-zinc-800 px-4 py-2 sm:hidden">
-        {NAV.map((item) => {
+        {navItems.map((item) => {
           const active =
             item.href === "/"
               ? pathname === "/"
@@ -93,12 +109,19 @@ function AppShellNav() {
   );
 }
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  role,
+}: {
+  children: React.ReactNode;
+  role: UserRole;
+}) {
   return (
     <NavigationProgressProvider>
+      <PriceAutoRefresh role={role} />
       <div className="min-h-full flex flex-col">
         <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur">
-          <AppShellNav />
+          <AppShellNav role={role} />
         </header>
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
           {children}

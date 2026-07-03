@@ -5,7 +5,7 @@ import {
   getTodaySummary,
   getWeeklyReturns,
 } from "@/lib/returns";
-import { format, subDays } from "date-fns";
+import { formatIsoDate, subDays } from "@/lib/dates";
 
 export const dynamic = "force-dynamic";
 
@@ -13,17 +13,17 @@ function rangeToFrom(range: string | undefined): string | undefined {
   const now = new Date();
   switch (range) {
     case "1M":
-      return format(subDays(now, 30), "yyyy-MM-dd");
+      return formatIsoDate(subDays(now, 30));
     case "3M":
-      return format(subDays(now, 90), "yyyy-MM-dd");
+      return formatIsoDate(subDays(now, 90));
     case "6M":
-      return format(subDays(now, 180), "yyyy-MM-dd");
+      return formatIsoDate(subDays(now, 180));
     case "1Y":
-      return format(subDays(now, 365), "yyyy-MM-dd");
+      return formatIsoDate(subDays(now, 365));
     case "All":
       return undefined;
     default:
-      return format(subDays(now, 90), "yyyy-MM-dd");
+      return formatIsoDate(subDays(now, 90));
   }
 }
 

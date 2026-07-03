@@ -1,4 +1,5 @@
 import { TickerDiagnostics } from "@/components/TickerDiagnostics";
+import { getCurrentUserRole } from "@/lib/auth";
 import {
   formatInstrumentLabel,
   positionToInstrument,
@@ -26,11 +27,12 @@ function toSnapshot(quote: Quote) {
 }
 
 export default async function SettingsPage() {
-  const db = getDb();
-  const [posRows, ctx] = await Promise.all([
-    db.select().from(positions).orderBy(positions.sortOrder),
+  const [posRows, ctx, role] = await Promise.all([
+    getDb().select().from(positions).orderBy(positions.sortOrder),
     loadMarketContext(),
+    getCurrentUserRole(),
   ]);
+  const readOnly = role === "viewer";
   const instruments = posRows.map(positionToInstrument);
   const quotes = await getQuotes(instruments);
   const quoteByKey = new Map(quotes.map((q) => [quoteKey(q), q]));
@@ -62,7 +64,7 @@ export default async function SettingsPage() {
             values.
           </p>
         </div>
-      <TickerDiagnostics positions={rows} />
+      <TickerDiagnostics positions={rows} readOnly={readOnly} />
     </div>
   );
 }

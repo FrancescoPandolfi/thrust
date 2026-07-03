@@ -15,9 +15,10 @@ type Props = {
     totalPlEur: number;
     totalPlPct: number;
   };
+  readOnly?: boolean;
 };
 
-export function PortfolioTable({ positions, totals }: Props) {
+export function PortfolioTable({ positions, totals, readOnly = false }: Props) {
   const groups = groupByCategory(positions);
   const [editingPosition, setEditingPosition] = useState<ComputedPosition | null>(
     null,
@@ -39,9 +40,11 @@ export function PortfolioTable({ positions, totals }: Props) {
                 <th className="px-4 py-3 text-right">Value EUR</th>
                 <th className="px-4 py-3 text-right">P/L %</th>
                 <th className="px-4 py-3 text-right">P/L EUR</th>
-                <th className="px-4 py-3 text-right">
-                  <span className="sr-only">Actions</span>
-                </th>
+                {!readOnly && (
+                  <th className="px-4 py-3 text-right">
+                    <span className="sr-only">Actions</span>
+                  </th>
+                )}
               </tr>
             </thead>
             <tbody>
@@ -52,7 +55,7 @@ export function PortfolioTable({ positions, totals }: Props) {
                   <Fragment key={cat}>
                     <tr className="bg-zinc-800/40">
                       <td
-                        colSpan={10}
+                        colSpan={readOnly ? 9 : 10}
                         className="px-4 py-2 text-xs font-semibold uppercase tracking-wide text-zinc-400"
                       >
                         {CATEGORY_LABELS[cat]}
@@ -63,6 +66,7 @@ export function PortfolioTable({ positions, totals }: Props) {
                         key={pos.id}
                         position={pos}
                         onEdit={setEditingPosition}
+                        readOnly={readOnly}
                       />
                     ))}
                   </Fragment>
@@ -94,14 +98,14 @@ export function PortfolioTable({ positions, totals }: Props) {
                   {totals.totalPlEur >= 0 ? "+" : ""}
                   {formatEur(totals.totalPlEur)}
                 </td>
-                <td className="px-4 py-3" />
+                {!readOnly && <td className="px-4 py-3" />}
               </tr>
             </tbody>
           </table>
         </div>
       </div>
 
-      {editingPosition && (
+      {!readOnly && editingPosition && (
         <PositionEditModal
           position={editingPosition}
           onClose={() => setEditingPosition(null)}

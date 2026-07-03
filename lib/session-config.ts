@@ -1,9 +1,12 @@
 import type { SessionOptions } from "iron-session";
 import { getSessionSecret } from "@/lib/env";
 
+import type { UserRole } from "@/lib/schema";
+
 export type SessionData = {
   isLoggedIn: boolean;
   userId?: string;
+  role?: UserRole;
 };
 
 let cachedSessionOptions: SessionOptions | null = null;

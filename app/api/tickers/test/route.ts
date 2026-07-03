@@ -1,6 +1,6 @@
 import { and, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
-import { isAuthenticated } from "@/lib/auth";
+import { getCurrentUserRole, isAuthenticated } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import {
   formatInstrumentLabel,
@@ -22,6 +22,13 @@ export async function GET(request: Request) {
   const symbol = searchParams.get("symbol")?.trim() || null;
   const micCode = searchParams.get("mic_code")?.trim() || null;
   const refresh = searchParams.get("refresh") === "1";
+
+  if (refresh) {
+    const role = await getCurrentUserRole();
+    if (role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
 
   if (!isin && !symbol) {
     return NextResponse.json({

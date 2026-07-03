@@ -2,36 +2,56 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { isAuthenticated } from "@/lib/auth";
+import { requireWriteAccess } from "@/lib/auth";
+import { recordCapitalFlow } from "@/lib/capital-flows";
+import { computePortfolio } from "@/lib/calculations";
 import { getDb } from "@/lib/db";
-import { normalizeInstrument } from "@/lib/instruments";
+import { formatSharesForStorage } from "@/lib/format";
+import { normalizeInstrument, positionToInstrument } from "@/lib/instruments";
+import { getQuoteMap } from "@/lib/prices";
 import { positions } from "@/lib/schema";
 
-async function requireAuth() {
-  if (!(await isAuthenticated())) {
-    throw new Error("Unauthorized");
-  }
+function toNum(v: string | number | null | undefined): number {
+  if (v == null) return 0;
+  return typeof v === "number" ? v : Number.parseFloat(v);
 }
 
-export async function updatePositionShares(id: string, shares: number) {
-  await requireAuth();
+export async function updatePosition(
+  id: string,
+  data: { shares: number; loadValueEur: number },
+) {
+  await requireWriteAccess();
   const db = getDb();
+  const [current] = await db
+    .select()
+    .from(positions)
+    .where(eq(positions.id, id))
+    .limit(1);
+  if (!current) {
+    throw new Error("Position not found");
+  }
+
+  const loadDelta = data.loadValueEur - toNum(current.loadValueEur);
+  const sharesDelta = data.shares - toNum(current.shares);
+  if (loadDelta !== 0) {
+    await recordCapitalFlow({
+      amountEur: loadDelta,
+      positionId: id,
+      title: current.title,
+      sharesDelta,
+    });
+  }
+
   await db
     .update(positions)
-    .set({ shares: String(shares), updatedAt: new Date() })
+    .set({
+      shares: formatSharesForStorage(data.shares),
+      loadValueEur: String(data.loadValueEur),
+      updatedAt: new Date(),
+    })
     .where(eq(positions.id, id));
   revalidatePath("/");
   revalidatePath("/returns");
-}
-
-export async function updatePositionLoadValue(id: string, loadValueEur: number) {
-  await requireAuth();
-  const db = getDb();
-  await db
-    .update(positions)
-    .set({ loadValueEur: String(loadValueEur), updatedAt: new Date() })
-    .where(eq(positions.id, id));
-  revalidatePath("/");
 }
 
 export async function addPosition(data: {
@@ -45,7 +65,7 @@ export async function addPosition(data: {
   shares: number;
   loadValueEur: number;
 }) {
-  await requireAuth();
+  await requireWriteAccess();
   const instrument = normalizeInstrument({
     isin: data.category === "crypto" ? null : (data.isin ?? null),
     micCode: data.category === "crypto" ? null : (data.micCode ?? null),
@@ -66,23 +86,61 @@ export async function addPosition(data: {
   }
 
   const db = getDb();
-  await db.insert(positions).values({
-    isin: instrument.isin,
-    symbol: instrument.symbol,
-    micCode: instrument.micCode,
-    yahooSymbol: instrument.yahooSymbol,
-    coingeckoId: instrument.coingeckoId,
-    title: data.title,
-    category: data.category,
-    shares: String(data.shares),
-    loadValueEur: String(data.loadValueEur),
-  });
+  const [inserted] = await db
+    .insert(positions)
+    .values({
+      isin: instrument.isin,
+      symbol: instrument.symbol,
+      micCode: instrument.micCode,
+      yahooSymbol: instrument.yahooSymbol,
+      coingeckoId: instrument.coingeckoId,
+      title: data.title,
+      category: data.category,
+      shares: formatSharesForStorage(data.shares),
+      loadValueEur: String(data.loadValueEur),
+    })
+    .returning({ id: positions.id });
+
+  if (data.loadValueEur !== 0) {
+    await recordCapitalFlow({
+      amountEur: data.loadValueEur,
+      positionId: inserted.id,
+      title: data.title,
+      sharesDelta: data.shares,
+    });
+  }
+
   revalidatePath("/");
+  revalidatePath("/returns");
 }
 
 export async function deletePosition(id: string) {
-  await requireAuth();
+  await requireWriteAccess();
   const db = getDb();
+  const [current] = await db
+    .select()
+    .from(positions)
+    .where(eq(positions.id, id))
+    .limit(1);
+  if (!current) {
+    throw new Error("Position not found");
+  }
+
+  const instrument = positionToInstrument(current);
+  const quotes = await getQuoteMap([instrument], { refresh: false });
+  const { positions: computed } = computePortfolio([current], [], quotes, false);
+  const valueEur = computed[0]?.valueEur ?? 0;
+
+  if (valueEur !== 0) {
+    await recordCapitalFlow({
+      amountEur: -valueEur,
+      positionId: id,
+      title: current.title,
+      sharesDelta: -toNum(current.shares),
+    });
+  }
+
   await db.delete(positions).where(eq(positions.id, id));
   revalidatePath("/");
+  revalidatePath("/returns");
 }

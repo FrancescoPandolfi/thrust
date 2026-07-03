@@ -77,7 +77,8 @@ export function computePortfolio(
 
   const withWeights = computed.map((p) => ({
     ...p,
-    weightPct: totalValueEur > 0 ? (p.valueEur / totalValueEur) * 100 : 0,
+    weightPct:
+      positionsValueEur > 0 ? (p.valueEur / positionsValueEur) * 100 : 0,
   }));
 
   return {

@@ -1,6 +1,8 @@
 /** Italian locale: comma decimals, day-first dates */
 export const DISPLAY_LOCALE = "it-IT";
 
+export const SHARES_DECIMALS = 6;
+
 const eurFormatter = new Intl.NumberFormat(DISPLAY_LOCALE, {
   style: "currency",
   currency: "EUR",
@@ -51,15 +53,71 @@ export function formatNumber(value: number, decimals = 2): string {
   }).format(value);
 }
 
+/** Stored numeric string for clipboard — trim DB padding without display rounding. */
+export function formatStoredNumeric(value: string, decimals: number): string {
+  const trimmed = value.trim();
+  if (!trimmed) return trimmed;
+
+  const dot = trimmed.indexOf(".");
+  if (dot === -1) return trimmed;
+
+  const intPart = trimmed.slice(0, dot);
+  let frac = trimmed.slice(dot + 1);
+  if (frac.length > decimals) {
+    frac = frac.slice(0, decimals);
+  }
+  frac = frac.replace(/0+$/, "");
+  return frac ? `${intPart}.${frac}` : intPart;
+}
+
+/** Format shares for DB storage and clipboard (max 6 decimal places). */
+export function formatSharesForStorage(value: number | string): string {
+  return formatStoredNumeric(String(value), SHARES_DECIMALS);
+}
+
 /** Format percent points (12.5 → "12,5%") */
 export function formatPercentPoints(value: number, decimals = 1): string {
   return `${formatNumber(value, decimals)}%`;
 }
 
+/** Parse user input in it-IT style (1.234,56) or plain decimals (1234.56). */
 export function parseDecimal(value: string): number {
-  const normalized = value.trim().replace(/\s/g, "").replace(",", ".");
+  let trimmed = value.trim().replace(/\s/g, "");
+  if (!trimmed) return 0;
+
+  let sign = 1;
+  if (trimmed.startsWith("-")) {
+    sign = -1;
+    trimmed = trimmed.slice(1);
+  } else if (trimmed.startsWith("+")) {
+    trimmed = trimmed.slice(1);
+  }
+
+  const lastComma = trimmed.lastIndexOf(",");
+  const lastDot = trimmed.lastIndexOf(".");
+
+  let normalized: string;
+  if (lastComma > lastDot) {
+    normalized = trimmed.replace(/\./g, "").replace(",", ".");
+  } else if (lastDot > lastComma) {
+    const afterDot = trimmed.slice(lastDot + 1);
+    if (
+      lastComma === -1 &&
+      trimmed.indexOf(".") === lastDot &&
+      /^\d{3}$/.test(afterDot)
+    ) {
+      normalized = trimmed.replace(/\./g, "");
+    } else {
+      normalized = trimmed.replace(/,/g, "");
+    }
+  } else if (lastComma >= 0) {
+    normalized = trimmed.replace(",", ".");
+  } else {
+    normalized = trimmed.replace(/\./g, "");
+  }
+
   const parsed = Number.parseFloat(normalized);
-  return Number.isFinite(parsed) ? parsed : 0;
+  return Number.isFinite(parsed) ? sign * parsed : 0;
 }
 
 function parseDateValue(value: string): Date {

@@ -1,0 +1,14 @@
+---
+description: Thrust uses one shared Neon Postgres database — treat all schema/data commands as production-impacting
+alwaysApply: true
+---
+
+# Single database
+
+This project has **one** Neon Postgres database. There is no separate local/dev database.
+
+- `DATABASE_URL` in `.env.local` points to the same database used in production (Vercel).
+- `npm run db:push`, `npm run db:seed`, and Drizzle migrations all affect **live portfolio data**.
+- Do not assume a throwaway dev DB, do not suggest spinning up a second database, and do not run destructive schema changes without warning the user.
+- After adding or changing schema (`lib/schema.ts`), apply it once with `npm run db:push` before testing features that depend on new columns or enums.
+- Prefer backward-compatible migrations (defaults, nullable-then-backfill) because existing users and data are on this single instance.

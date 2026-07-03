@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
-import { isAuthenticated } from "@/lib/auth";
+import { getCurrentUserRole, isAuthenticated } from "@/lib/auth";
 import { productionErrorMessage } from "@/lib/env";
 import { logProductionError } from "@/lib/errors";
+import { allQuotesStale, getQuotes } from "@/lib/prices";
+import {
+  quotesRefreshFailed,
+  refreshAllPositionQuotes,
+} from "@/lib/refresh-quotes";
 import { getDb } from "@/lib/db";
-import { allQuotesStale, getQuotes, hasMissingQuotes } from "@/lib/prices";
 import { positionToInstrument } from "@/lib/instruments";
 import { positions } from "@/lib/schema";
 
@@ -42,10 +46,16 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  try {
-    const quotes = await fetchQuotes({ refresh: true, force: false });
+  const role = await getCurrentUserRole();
+  if (role !== "admin") {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
 
-    if (hasMissingQuotes(quotes) && allQuotesStale(quotes)) {
+  try {
+    const result = await refreshAllPositionQuotes();
+    const quotes = [...result.quotes.values()];
+
+    if (quotesRefreshFailed(result.quotes) && allQuotesStale(quotes)) {
       return NextResponse.json(
         {
           error:

@@ -12,6 +12,7 @@ import { PlusIcon } from "./icons/ActionIcons";
 type Props = {
   balances: CashBalance[];
   cashValueEur: number;
+  readOnly?: boolean;
 };
 
 type ModalState =
@@ -20,7 +21,7 @@ type ModalState =
   | { mode: "delete"; balance: CashBalance }
   | null;
 
-export function CashSection({ balances, cashValueEur }: Props) {
+export function CashSection({ balances, cashValueEur, readOnly = false }: Props) {
   const [modal, setModal] = useState<ModalState>(null);
 
   return (
@@ -31,21 +32,23 @@ export function CashSection({ balances, cashValueEur }: Props) {
         <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
           <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
             <h2 className="text-sm font-medium text-zinc-200">Balances</h2>
-            <button
-              type="button"
-              onClick={() => setModal({ mode: "add" })}
-              className="group inline-flex cursor-pointer items-center gap-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-zinc-950 shadow-[0_0_0_0_rgb(223_255_0/0)] transition-[filter,box-shadow,transform] hover:brightness-95 hover:shadow-[0_0_20px_-4px_rgb(223_255_0/0.55)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
-            >
-              <PlusIcon className="h-4 w-4 transition-transform group-hover:rotate-90" />
-              Add balance
-            </button>
+            {!readOnly && (
+              <button
+                type="button"
+                onClick={() => setModal({ mode: "add" })}
+                className="group inline-flex cursor-pointer items-center gap-2 rounded-lg bg-accent px-3 py-1.5 text-sm font-medium text-zinc-950 shadow-[0_0_0_0_rgb(223_255_0/0)] transition-[filter,box-shadow,transform] hover:brightness-95 hover:shadow-[0_0_20px_-4px_rgb(223_255_0/0.55)] active:scale-[0.98] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+              >
+                <PlusIcon className="h-4 w-4 transition-transform group-hover:rotate-90" />
+                Add balance
+              </button>
+            )}
           </div>
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-zinc-800 text-left text-xs uppercase tracking-wide text-zinc-400">
                 <th className="px-4 py-3">Label</th>
                 <th className="px-4 py-3 text-right">Amount EUR</th>
-                <th className="px-4 py-3 text-right">Actions</th>
+                {!readOnly && <th className="px-4 py-3 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody>
@@ -58,18 +61,20 @@ export function CashSection({ balances, cashValueEur }: Props) {
                   <td className="px-4 py-3 text-right font-mono tabular-nums text-zinc-100">
                     {formatEur(Number.parseFloat(balance.amountEur))}
                   </td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex justify-end gap-2">
-                      <EditIconButton
-                        label={`Edit ${balance.label}`}
-                        onClick={() => setModal({ mode: "edit", balance })}
-                      />
-                      <DeleteIconButton
-                        label={`Delete ${balance.label}`}
-                        onClick={() => setModal({ mode: "delete", balance })}
-                      />
-                    </div>
-                  </td>
+                  {!readOnly && (
+                    <td className="px-4 py-3 text-right">
+                      <div className="flex justify-end gap-2">
+                        <EditIconButton
+                          label={`Edit ${balance.label}`}
+                          onClick={() => setModal({ mode: "edit", balance })}
+                        />
+                        <DeleteIconButton
+                          label={`Delete ${balance.label}`}
+                          onClick={() => setModal({ mode: "delete", balance })}
+                        />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>
@@ -77,17 +82,17 @@ export function CashSection({ balances, cashValueEur }: Props) {
         </div>
       </div>
 
-      {modal?.mode === "add" && (
+      {!readOnly && modal?.mode === "add" && (
         <CashBalanceModal mode="add" onClose={() => setModal(null)} />
       )}
-      {modal?.mode === "edit" && (
+      {!readOnly && modal?.mode === "edit" && (
         <CashBalanceModal
           mode="edit"
           balance={modal.balance}
           onClose={() => setModal(null)}
         />
       )}
-      {modal?.mode === "delete" && (
+      {!readOnly && modal?.mode === "delete" && (
         <CashDeleteConfirmModal
           balance={modal.balance}
           onClose={() => setModal(null)}

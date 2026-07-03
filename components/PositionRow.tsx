@@ -1,15 +1,17 @@
 "use client";
 
 import type { ComputedPosition } from "@/lib/calculations";
-import { formatEur, formatNumber, formatPercentPoints, formatPct, formatUsd } from "@/lib/format";
+import { formatEur, formatNumber, formatPercentPoints, formatPct, formatUsd, SHARES_DECIMALS } from "@/lib/format";
+import { CopyValueButton } from "./CopyValueButton";
 import { EditIconButton } from "./icons/ActionButtons";
 
 type Props = {
   position: ComputedPosition;
   onEdit: (position: ComputedPosition) => void;
+  readOnly?: boolean;
 };
 
-export function PositionRow({ position, onEdit }: Props) {
+export function PositionRow({ position, onEdit, readOnly = false }: Props) {
   const plPositive = position.plEur >= 0;
   const instrumentLabel = position.symbol ?? position.isin ?? "—";
 
@@ -45,10 +47,24 @@ export function PositionRow({ position, onEdit }: Props) {
         )}
       </td>
       <td className="px-4 py-2.5 text-right font-mono tabular-nums text-zinc-200">
-        {formatNumber(Number.parseFloat(position.shares), 2)}
+        <span className="inline-flex items-center justify-end gap-1">
+          <span>{formatNumber(Number.parseFloat(position.shares), 2)}</span>
+          <CopyValueButton
+            value={position.shares}
+            decimals={SHARES_DECIMALS}
+            label="Copy shares"
+          />
+        </span>
       </td>
       <td className="px-4 py-2.5 text-right font-mono tabular-nums text-zinc-200">
-        {formatEur(Number.parseFloat(position.loadValueEur))}
+        <span className="inline-flex items-center justify-end gap-1">
+          <span>{formatEur(Number.parseFloat(position.loadValueEur))}</span>
+          <CopyValueButton
+            value={position.loadValueEur}
+            decimals={2}
+            label="Copy load value"
+          />
+        </span>
       </td>
       <td className="px-4 py-2.5 text-right font-mono tabular-nums text-zinc-100">
         {formatEur(position.valueEur)}
@@ -69,12 +85,14 @@ export function PositionRow({ position, onEdit }: Props) {
         {plPositive ? "+" : ""}
         {formatEur(position.plEur)}
       </td>
-      <td className="px-4 py-2.5 text-right">
-        <EditIconButton
-          label={`Edit ${position.title}`}
-          onClick={() => onEdit(position)}
-        />
-      </td>
+      {!readOnly && (
+        <td className="px-4 py-2.5 text-right">
+          <EditIconButton
+            label={`Edit ${position.title}`}
+            onClick={() => onEdit(position)}
+          />
+        </td>
+      )}
     </tr>
   );
 }

@@ -50,6 +50,7 @@ async function main() {
       .values({
         email: seedEmail,
         passwordHash: hashPassword(seedPassword),
+        role: "admin",
       })
       .onConflictDoNothing()
       .returning({ id: users.id });

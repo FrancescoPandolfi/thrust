@@ -41,6 +41,7 @@ type TestResponse = {
 
 type Props = {
   positions: PositionRow[];
+  readOnly?: boolean;
 };
 
 function statusBadge(ok: boolean, stale?: boolean) {
@@ -70,7 +71,7 @@ function formatMicCode(micCode: string | null): string {
   return micCode ?? "—";
 }
 
-export function TickerDiagnostics({ positions: initial }: Props) {
+export function TickerDiagnostics({ positions: initial, readOnly = false }: Props) {
   const [rows, setRows] = useState(initial);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [isinInput, setIsinInput] = useState("");
@@ -171,88 +172,91 @@ export function TickerDiagnostics({ positions: initial }: Props) {
         </div>
       </section>
 
-      <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
-        <h2 className="text-sm font-semibold text-zinc-200">Test an instrument</h2>
-        <p className="mt-1 text-sm text-zinc-400">
-          Enter ISIN + MIC for ETFs (e.g.{" "}
-          <code className="text-zinc-300">IE00B4L5Y983</code> +{" "}
-          <code className="text-zinc-300">XAMS</code>) or symbol for crypto (
-          <code className="text-zinc-300">BTC-EUR</code>).
-        </p>
-        <form onSubmit={testCustomInstrument} className="mt-4 flex flex-wrap gap-3">
-          <input
-            value={isinInput}
-            onChange={(e) => setIsinInput(e.target.value)}
-            placeholder="ISIN"
-            className="min-w-[160px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
-          />
-          <input
-            value={micInput}
-            onChange={(e) => setMicInput(e.target.value)}
-            placeholder="MIC (optional)"
-            className="min-w-[120px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
-          />
-          <input
-            value={symbolInput}
-            onChange={(e) => setSymbolInput(e.target.value)}
-            placeholder="Symbol (crypto)"
-            className="min-w-[120px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
-          />
-          <button
-            type="submit"
-            disabled={customLoading || (!isinInput.trim() && !symbolInput.trim())}
-            className="btn-primary rounded-lg px-4 py-2 text-sm"
-          >
-            {customLoading ? "Fetching…" : "Fetch live"}
-          </button>
-        </form>
+      {!readOnly && (
+        <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
+          <h2 className="text-sm font-semibold text-zinc-200">Test an instrument</h2>
+          <p className="mt-1 text-sm text-zinc-400">
+            Enter ISIN + MIC for ETFs (e.g.{" "}
+            <code className="text-zinc-300">IE00B4L5Y983</code> +{" "}
+            <code className="text-zinc-300">XAMS</code>) or symbol for crypto (
+            <code className="text-zinc-300">BTC-EUR</code>).
+          </p>
+          <form onSubmit={testCustomInstrument} className="mt-4 flex flex-wrap gap-3">
+            <input
+              value={isinInput}
+              onChange={(e) => setIsinInput(e.target.value)}
+              placeholder="ISIN"
+              className="min-w-[160px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
+            />
+            <input
+              value={micInput}
+              onChange={(e) => setMicInput(e.target.value)}
+              placeholder="MIC (optional)"
+              className="min-w-[120px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
+            />
+            <input
+              value={symbolInput}
+              onChange={(e) => setSymbolInput(e.target.value)}
+              placeholder="Symbol (crypto)"
+              className="min-w-[120px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
+            />
+            <button
+              type="submit"
+              disabled={customLoading || (!isinInput.trim() && !symbolInput.trim())}
+              className="btn-primary rounded-lg px-4 py-2 text-sm"
+            >
+              {customLoading ? "Fetching…" : "Fetch live"}
+            </button>
+          </form>
 
-        {customResult && (
-          <div
-            className={`mt-4 rounded-lg border px-4 py-3 text-sm ${
-              customResult.ok
-                ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
-                : "border-rose-500/30 bg-rose-500/10 text-rose-100"
-            }`}
-          >
-            <p>
-              <span className="text-zinc-400">Instrument:</span>{" "}
-              <span className="font-mono">{customResult.label ?? "—"}</span>
-            </p>
-            {customResult.provider && (
+          {customResult && (
+            <div
+              className={`mt-4 rounded-lg border px-4 py-3 text-sm ${
+                customResult.ok
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-100"
+                  : "border-rose-500/30 bg-rose-500/10 text-rose-100"
+              }`}
+            >
               <p>
-                <span className="text-zinc-400">Provider:</span>{" "}
-                {customResult.provider}
+                <span className="text-zinc-400">Instrument:</span>{" "}
+                <span className="font-mono">{customResult.label ?? "—"}</span>
               </p>
-            )}
-            {customResult.quote ? (
-              <>
-                <p className="mt-2 font-mono tabular-nums">
-                  {formatEur(customResult.quote.priceEur)}
+              {customResult.provider && (
+                <p>
+                  <span className="text-zinc-400">Provider:</span>{" "}
+                  {customResult.provider}
                 </p>
-                {customResult.quote.currency !== "EUR" && (
-                  <p className="text-xs text-zinc-400">
-                    Source: {formatNumber(customResult.quote.price, 4)}{" "}
-                    {customResult.quote.currency}
+              )}
+              {customResult.quote ? (
+                <>
+                  <p className="mt-2 font-mono tabular-nums">
+                    {formatEur(customResult.quote.priceEur)}
                   </p>
-                )}
-                <p className="text-xs text-zinc-400">
-                  {formatDateTime(customResult.quote.fetchedAt)}
-                </p>
-              </>
-            ) : (
-              <p className="mt-2">{customResult.error ?? "No quote returned"}</p>
-            )}
-          </div>
-        )}
-      </section>
+                  {customResult.quote.currency !== "EUR" && (
+                    <p className="text-xs text-zinc-400">
+                      Source: {formatNumber(customResult.quote.price, 4)}{" "}
+                      {customResult.quote.currency}
+                    </p>
+                  )}
+                  <p className="text-xs text-zinc-400">
+                    {formatDateTime(customResult.quote.fetchedAt)}
+                  </p>
+                </>
+              ) : (
+                <p className="mt-2">{customResult.error ?? "No quote returned"}</p>
+              )}
+            </div>
+          )}
+        </section>
+      )}
 
       <section className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
         <div className="border-b border-zinc-800 px-4 py-3">
           <h2 className="text-sm font-semibold text-zinc-200">Portfolio instruments</h2>
           <p className="mt-1 text-xs text-zinc-500">
-            Cached prices from DB. Use &quot;Fetch live&quot; to hit Yahoo Finance /
-            CoinGecko / Frankfurter for a single instrument.
+            {readOnly
+              ? "Cached prices from the database."
+              : 'Cached prices from DB. Use "Fetch live" to hit Yahoo Finance / CoinGecko / Frankfurter for a single instrument.'}
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -266,7 +270,7 @@ export function TickerDiagnostics({ positions: initial }: Props) {
                 <th className="px-4 py-3">Provider</th>
                 <th className="px-4 py-3 text-right">Price (EUR)</th>
                 <th className="px-4 py-3">Fetched</th>
-                <th className="px-4 py-3" />
+                {!readOnly && <th className="px-4 py-3" />}
               </tr>
             </thead>
             <tbody>
@@ -298,16 +302,18 @@ export function TickerDiagnostics({ positions: initial }: Props) {
                       ? formatDateTime(row.quote.fetchedAt)
                       : (row.error ?? "—")}
                   </td>
-                  <td className="px-4 py-2.5 text-right">
-                    <button
-                      type="button"
-                      onClick={() => liveFetch(row)}
-                      disabled={loadingId === row.id}
-                      className="btn-primary rounded-md px-2.5 py-1 text-xs"
-                    >
-                      {loadingId === row.id ? "…" : "Fetch live"}
-                    </button>
-                  </td>
+                  {!readOnly && (
+                    <td className="px-4 py-2.5 text-right">
+                      <button
+                        type="button"
+                        onClick={() => liveFetch(row)}
+                        disabled={loadingId === row.id}
+                        className="btn-primary rounded-md px-2.5 py-1 text-xs"
+                      >
+                        {loadingId === row.id ? "…" : "Fetch live"}
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

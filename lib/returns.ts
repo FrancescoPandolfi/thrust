@@ -1,5 +1,12 @@
 import { and, asc, desc, eq, gt, gte, lt, lte } from "drizzle-orm";
-import { addDays, format, parseISO, startOfWeek, subDays } from "date-fns";
+import {
+  addDays,
+  formatIsoDate,
+  parseIsoDate,
+  startOfWeek,
+  subDays,
+} from "./dates";
+import { getNetFlowsByDate } from "./capital-flows";
 import { getPositionsValueEur, getRomeDate } from "./snapshots";
 import { getDb } from "./db";
 import { dailySnapshots } from "./schema";
@@ -29,16 +36,17 @@ export type ChartPoint = {
 };
 
 function defaultFromDate(): string {
-  return format(subDays(new Date(), 90), "yyyy-MM-dd");
+  return formatIsoDate(subDays(new Date(), 90));
 }
 
 function computeDailyReturnRow(
   date: string,
   startValueEur: number,
   endValueEur: number,
+  netFlowEur = 0,
 ): DailyReturnRow {
-  const returnEur = endValueEur - startValueEur;
-  const returnPct = startValueEur > 0 ? endValueEur / startValueEur - 1 : 0;
+  const returnEur = endValueEur - startValueEur - netFlowEur;
+  const returnPct = startValueEur > 0 ? returnEur / startValueEur : 0;
   return { date, startValueEur, endValueEur, returnEur, returnPct };
 }
 
@@ -81,7 +89,7 @@ export async function getDailyReturns(
   const db = getDb();
   const fromDate = from ?? defaultFromDate();
   const toDate = to ?? getRomeDate();
-  const snapshotThrough = format(addDays(parseISO(toDate), 1), "yyyy-MM-dd");
+  const snapshotThrough = formatIsoDate(addDays(parseIsoDate(toDate), 1));
 
   const rows = await db
     .select()
@@ -94,6 +102,8 @@ export async function getDailyReturns(
     )
     .orderBy(asc(dailySnapshots.date));
 
+  const flowsByDate = await getNetFlowsByDate(fromDate, toDate);
+
   const returns: DailyReturnRow[] = [];
   for (let i = 0; i < rows.length - 1; i++) {
     const startSnap = rows[i];
@@ -105,6 +115,7 @@ export async function getDailyReturns(
         startSnap.date,
         toNum(startSnap.positionsValueEur),
         toNum(endSnap.positionsValueEur),
+        flowsByDate.get(startSnap.date) ?? 0,
       ),
     );
   }
@@ -120,9 +131,8 @@ export async function getWeeklyReturns(
   const byWeek = new Map<string, DailyReturnRow[]>();
 
   for (const row of daily) {
-    const weekStart = format(
-      startOfWeek(new Date(row.date), { weekStartsOn: 1 }),
-      "yyyy-MM-dd",
+    const weekStart = formatIsoDate(
+      startOfWeek(parseIsoDate(row.date), 1),
     );
     const group = byWeek.get(weekStart) ?? [];
     group.push(row);
@@ -187,8 +197,10 @@ export async function getTodaySummary() {
   let returnEur: number | null = null;
   let returnPct: number | null = null;
   if (startValue != null && endValue != null) {
-    returnEur = endValue - startValue;
-    returnPct = startValue > 0 ? endValue / startValue - 1 : 0;
+    const flowsByDate = await getNetFlowsByDate(today, today);
+    const netFlowEur = flowsByDate.get(today) ?? 0;
+    returnEur = endValue - startValue - netFlowEur;
+    returnPct = startValue > 0 ? returnEur / startValue : 0;
   }
 
   return {
