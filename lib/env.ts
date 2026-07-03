@@ -20,7 +20,6 @@ export function getSessionSecret(): string {
 
 export function validateEnv(): void {
   getSessionSecret();
-  requireEnv("CRON_SECRET");
 }
 
 export function productionErrorMessage(

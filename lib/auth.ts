@@ -38,8 +38,7 @@ export async function getCurrentUserRole(): Promise<UserRole | null> {
     return null;
   }
 
-  session.role = user.role;
-  await session.save();
+  // Role is stored on login; avoid session.save() in Server Components.
   return user.role;
 }
 
