@@ -19,14 +19,14 @@ export function RefreshPricesButton() {
       };
 
       if (!response.ok) {
-        setMessage(data.error ?? "Refresh failed. Try again in 30 minutes.");
+        setMessage(data.error ?? "Refresh failed. Try again in a few minutes.");
         return;
       }
 
       router.refresh();
       setMessage("Prices updated.");
     } catch {
-      setMessage("Refresh failed. Try again in 30 minutes.");
+      setMessage("Refresh failed. Try again in a few minutes.");
     } finally {
       setLoading(false);
     }

@@ -20,8 +20,8 @@ import {
 import { loadMarketContext } from "./market-data";
 import { priceCache } from "./schema";
 
-import { QUOTE_REFRESH_INTERVAL_MS } from "./quote-refresh";
-const CACHE_TTL_MS = QUOTE_REFRESH_INTERVAL_MS;
+const QUOTE_STALE_AFTER_MS = 30 * 60 * 1000;
+const CACHE_TTL_MS = QUOTE_STALE_AFTER_MS;
 const MIN_FETCH_INTERVAL_MS = 2 * 60 * 1000;
 const FETCH_DELAY_MS = 800;
 

@@ -7,7 +7,6 @@ import {
   NavigationProgressProvider,
   useNavigationProgress,
 } from "@/components/NavigationProgress";
-import { PriceAutoRefresh } from "@/components/PriceAutoRefresh";
 import type { UserRole } from "@/lib/schema";
 
 const NAV = [
@@ -118,7 +117,6 @@ export function AppShell({
 }) {
   return (
     <NavigationProgressProvider>
-      <PriceAutoRefresh role={role} />
       <div className="min-h-full flex flex-col">
         <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur">
           <AppShellNav role={role} />
