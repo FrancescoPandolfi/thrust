@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   const micCode = searchParams.get("mic_code")?.trim() || null;
   const refresh = searchParams.get("refresh") === "1";
 
-  if (refresh && (!context || context.readOnly)) {
+  if (refresh && (!context || !context.canRefreshPrices)) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

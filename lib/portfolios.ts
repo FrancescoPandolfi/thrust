@@ -17,6 +17,7 @@ export type PortfolioSummary = {
 
 export type PortfolioViewContext = PortfolioSummary & {
   readOnly: boolean;
+  canRefreshPrices: boolean;
   viewMode: "single" | "aggregate";
   aggregatePortfolioIds: string[];
 };

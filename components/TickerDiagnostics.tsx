@@ -42,6 +42,7 @@ type TestResponse = {
 type Props = {
   positions: PositionRow[];
   readOnly?: boolean;
+  canRefreshPrices?: boolean;
 };
 
 function statusBadge(ok: boolean, stale?: boolean) {
@@ -71,7 +72,11 @@ function formatMicCode(micCode: string | null): string {
   return micCode ?? "—";
 }
 
-export function TickerDiagnostics({ positions: initial, readOnly = false }: Props) {
+export function TickerDiagnostics({
+  positions: initial,
+  readOnly = false,
+  canRefreshPrices = !readOnly,
+}: Props) {
   const [rows, setRows] = useState(initial);
   const [loadingId, setLoadingId] = useState<string | null>(null);
   const [isinInput, setIsinInput] = useState("");
@@ -172,7 +177,7 @@ export function TickerDiagnostics({ positions: initial, readOnly = false }: Prop
         </div>
       </section>
 
-      {!readOnly && (
+      {canRefreshPrices && (
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
           <h2 className="text-sm font-semibold text-zinc-200">Test an instrument</h2>
           <p className="mt-1 text-sm text-zinc-400">
@@ -254,9 +259,9 @@ export function TickerDiagnostics({ positions: initial, readOnly = false }: Prop
         <div className="border-b border-zinc-800 px-4 py-3">
           <h2 className="text-sm font-semibold text-zinc-200">Portfolio instruments</h2>
           <p className="mt-1 text-xs text-zinc-500">
-            {readOnly
-              ? "Cached prices from the database."
-              : 'Cached prices from DB. Use "Fetch live" to hit Yahoo Finance / CoinGecko / Frankfurter for a single instrument.'}
+            {canRefreshPrices
+              ? 'Cached prices from DB. Use "Fetch live" to hit Yahoo Finance / CoinGecko / Frankfurter for a single instrument.'
+              : "Cached prices from the database."}
           </p>
         </div>
         <div className="overflow-x-auto">
@@ -302,7 +307,7 @@ export function TickerDiagnostics({ positions: initial, readOnly = false }: Prop
                       ? formatDateTime(row.quote.fetchedAt)
                       : (row.error ?? "—")}
                   </td>
-                  {!readOnly && (
+                  {canRefreshPrices && (
                     <td className="px-4 py-2.5 text-right">
                       <button
                         type="button"

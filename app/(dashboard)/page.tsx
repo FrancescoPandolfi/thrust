@@ -18,6 +18,7 @@ export default async function HomePage() {
       getLastQuoteRefreshAt(),
     ]);
   const readOnly = context?.readOnly ?? true;
+  const canRefreshPrices = context?.canRefreshPrices ?? false;
   const isAggregate = context?.viewMode === "aggregate";
   const needsRefresh = positions.some(
     (position) => position.stale || position.price <= 0,
@@ -49,13 +50,13 @@ export default async function HomePage() {
 
         {needsRefresh && (
           <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            {readOnly ? (
-              <>Prices are missing or outdated. Contact a portfolio admin to refresh market data.</>
-            ) : (
+            {canRefreshPrices ? (
               <>
                 Prices are missing or outdated. Click <strong>Refresh prices</strong>{" "}
                 once — if the data provider rate-limits you, wait a few minutes and try again.
               </>
+            ) : (
+              <>Prices are missing or outdated. Contact a portfolio admin to refresh market data.</>
             )}
           </div>
         )}
@@ -72,7 +73,7 @@ export default async function HomePage() {
 
         <PortfolioTable positions={positions} totals={totals} readOnly={readOnly} />
       </div>
-      {!readOnly && <RefreshPricesButton />}
+      {canRefreshPrices && <RefreshPricesButton />}
     </>
   );
 }

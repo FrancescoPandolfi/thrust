@@ -125,17 +125,24 @@ export async function getPortfolioContext(): Promise<PortfolioViewContext | null
       : [];
 
   if (viewMode === "aggregate" && validAggregateIds.length >= 2) {
+    const canRefreshPrices = validAggregateIds.some((id) => {
+      const portfolio = memberships.find((p) => p.id === id);
+      return portfolio != null && canWritePortfolio(portfolio.role);
+    });
     return {
       ...membership,
       readOnly: true,
+      canRefreshPrices,
       viewMode: "aggregate",
       aggregatePortfolioIds: validAggregateIds,
     };
   }
 
+  const canWrite = canWritePortfolio(membership.role);
   return {
     ...membership,
-    readOnly: !canWritePortfolio(membership.role),
+    readOnly: !canWrite,
+    canRefreshPrices: canWrite,
     viewMode: "single",
     aggregatePortfolioIds: [],
   };

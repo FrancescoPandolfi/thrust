@@ -52,6 +52,7 @@ export default async function SettingsPage() {
       : [];
 
   const readOnly = context?.readOnly ?? role === "viewer";
+  const canRefreshPrices = context?.canRefreshPrices ?? !readOnly;
   const instruments = posRows.map(positionToInstrument);
   const quotes = await getQuotes(instruments);
   const quoteByKey = new Map(quotes.map((q) => [quoteKey(q), q]));
@@ -93,7 +94,11 @@ export default async function SettingsPage() {
           </p>
         )}
       </div>
-      <TickerDiagnostics positions={rows} readOnly={readOnly} />
+      <TickerDiagnostics
+        positions={rows}
+        readOnly={readOnly}
+        canRefreshPrices={canRefreshPrices}
+      />
     </div>
   );
 }

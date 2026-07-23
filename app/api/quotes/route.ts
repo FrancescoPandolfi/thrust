@@ -64,7 +64,7 @@ export async function POST() {
   }
 
   const context = await getPortfolioContext();
-  if (!context || context.readOnly) {
+  if (!context || !context.canRefreshPrices) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 
