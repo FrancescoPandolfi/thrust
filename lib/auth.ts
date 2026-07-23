@@ -80,11 +80,10 @@ export async function listAccessiblePortfolios(): Promise<PortfolioSummary[]> {
   return listUserPortfolios(userId);
 }
 
-async function ensureActivePortfolioId(
+function resolveActivePortfolioId(
   session: Awaited<ReturnType<typeof getSession>>,
-  userId: string,
-): Promise<string | null> {
-  const memberships = await listUserPortfolios(userId);
+  memberships: PortfolioSummary[],
+): string | null {
   if (memberships.length === 0) {
     return null;
   }
@@ -96,10 +95,7 @@ async function ensureActivePortfolioId(
     }
   }
 
-  session.activePortfolioId = memberships[0].id;
-  session.portfolioViewMode = "single";
-  session.aggregatePortfolioIds = undefined;
-  await session.save();
+  // Fallback for legacy sessions; do not session.save() from Server Components.
   return memberships[0].id;
 }
 
@@ -109,7 +105,8 @@ export async function getPortfolioContext(): Promise<PortfolioViewContext | null
     return null;
   }
 
-  const portfolioId = await ensureActivePortfolioId(session, session.userId);
+  const memberships = await listUserPortfolios(session.userId);
+  const portfolioId = resolveActivePortfolioId(session, memberships);
   if (!portfolioId) {
     return null;
   }
@@ -120,11 +117,10 @@ export async function getPortfolioContext(): Promise<PortfolioViewContext | null
   }
 
   const viewMode = session.portfolioViewMode ?? "single";
-  const allMemberships = await listUserPortfolios(session.userId);
   const validAggregateIds =
     viewMode === "aggregate" && session.aggregatePortfolioIds?.length
       ? session.aggregatePortfolioIds.filter((id) =>
-          allMemberships.some((p) => p.id === id),
+          memberships.some((p) => p.id === id),
         )
       : [];
 

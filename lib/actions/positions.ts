@@ -19,12 +19,45 @@ function toNum(v: string | number | null | undefined): number {
 
 export async function updatePosition(
   id: string,
-  data: { shares: number; loadValueEur: number },
+  data: {
+    title: string;
+    isin?: string;
+    micCode?: string | null;
+    symbol?: string;
+    coingeckoId?: string | null;
+    shares: number;
+    loadValueEur: number;
+  },
 ) {
   const context = await requirePortfolioWriteAccess();
   const current = await verifyPositionInActivePortfolio(id);
   if (!current) {
     throw new Error("Position not found");
+  }
+
+  const trimmedTitle = data.title.trim();
+  if (!trimmedTitle) {
+    throw new Error("Title is required");
+  }
+
+  const instrument = normalizeInstrument({
+    isin: current.category === "crypto" ? null : (data.isin ?? null),
+    micCode: current.category === "crypto" ? null : (data.micCode ?? null),
+    symbol: current.category === "crypto" ? (data.symbol ?? null) : null,
+    yahooSymbol: current.yahooSymbol,
+    coingeckoId:
+      current.category === "crypto" ? (data.coingeckoId ?? null) : current.coingeckoId,
+    category: current.category,
+  });
+
+  if (current.category === "crypto" && !instrument.symbol) {
+    throw new Error("Symbol is required for crypto");
+  }
+  if (current.category === "crypto" && !instrument.coingeckoId) {
+    throw new Error("CoinGecko ID is required for crypto");
+  }
+  if (current.category !== "crypto" && !instrument.isin) {
+    throw new Error("ISIN is required");
   }
 
   const loadDelta = data.loadValueEur - toNum(current.loadValueEur);
@@ -34,7 +67,7 @@ export async function updatePosition(
       portfolioId: context.id,
       amountEur: loadDelta,
       positionId: id,
-      title: current.title,
+      title: trimmedTitle,
       sharesDelta,
     });
   }
@@ -43,6 +76,12 @@ export async function updatePosition(
   await db
     .update(positions)
     .set({
+      title: trimmedTitle,
+      isin: instrument.isin,
+      symbol: instrument.symbol,
+      micCode: instrument.micCode,
+      yahooSymbol: instrument.yahooSymbol,
+      coingeckoId: instrument.coingeckoId,
       shares: formatSharesForStorage(data.shares),
       loadValueEur: String(data.loadValueEur),
       updatedAt: new Date(),
@@ -51,6 +90,7 @@ export async function updatePosition(
   revalidatePath("/");
   revalidatePath("/returns");
   revalidatePath("/flows");
+  revalidatePath("/settings");
 }
 
 export async function addPosition(data: {

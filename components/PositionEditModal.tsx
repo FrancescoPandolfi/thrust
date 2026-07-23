@@ -172,12 +172,16 @@ function NumericFieldEditor({
 export function PositionEditModal({ position, onClose }: Props) {
   const router = useRouter();
   const formId = useId();
-  const sharesId = `${formId}-shares`;
-  const loadValueId = `${formId}-load-value`;
+  const isCrypto = position.category === "crypto";
 
   const currentShares = Number.parseFloat(position.shares);
   const currentLoadValue = Number.parseFloat(position.loadValueEur);
 
+  const [title, setTitle] = useState(position.title);
+  const [isin, setIsin] = useState(position.isin ?? "");
+  const [micCode, setMicCode] = useState(position.micCode ?? "");
+  const [symbol, setSymbol] = useState(position.symbol ?? "");
+  const [coingeckoId, setCoingeckoId] = useState(position.coingeckoId ?? "");
   const [sharesMode, setSharesMode] = useState<EditMode>("adjust");
   const [loadValueMode, setLoadValueMode] = useState<EditMode>("adjust");
   const [shares, setShares] = useState("");
@@ -211,6 +215,26 @@ export function PositionEditModal({ position, onClose }: Props) {
     };
   }, [saving, closing]);
 
+  function hasMetadataChanges(
+    nextTitle: string,
+    nextIsin: string,
+    nextMicCode: string,
+    nextSymbol: string,
+    nextCoingeckoId: string,
+  ): boolean {
+    if (nextTitle.trim() !== position.title) return true;
+    if (isCrypto) {
+      return (
+        nextSymbol.trim().toUpperCase() !== (position.symbol ?? "").toUpperCase() ||
+        nextCoingeckoId.trim() !== (position.coingeckoId ?? "")
+      );
+    }
+    return (
+      nextIsin.trim().toUpperCase() !== (position.isin ?? "").toUpperCase() ||
+      nextMicCode.trim().toUpperCase() !== (position.micCode ?? "").toUpperCase()
+    );
+  }
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setSaving(true);
@@ -223,9 +247,40 @@ export function PositionEditModal({ position, onClose }: Props) {
         currentLoadValue,
         loadValue,
       );
+      const nextTitle = title.trim();
+      const nextIsin = isin.trim();
+      const nextMicCode = micCode.trim();
+      const nextSymbol = symbol.trim();
+      const nextCoingeckoId = coingeckoId.trim();
 
-      if (nextShares !== currentShares || nextLoadValue !== currentLoadValue) {
+      if (!nextTitle) {
+        throw new Error("Title is required");
+      }
+      if (isCrypto) {
+        if (!nextSymbol) throw new Error("Symbol is required for crypto");
+        if (!nextCoingeckoId) throw new Error("CoinGecko ID is required for crypto");
+      } else if (!nextIsin) {
+        throw new Error("ISIN is required");
+      }
+
+      const changed =
+        nextShares !== currentShares ||
+        nextLoadValue !== currentLoadValue ||
+        hasMetadataChanges(
+          nextTitle,
+          nextIsin,
+          nextMicCode,
+          nextSymbol,
+          nextCoingeckoId,
+        );
+
+      if (changed) {
         await updatePosition(position.id, {
+          title: nextTitle,
+          isin: isCrypto ? undefined : nextIsin,
+          micCode: isCrypto ? null : nextMicCode || null,
+          symbol: isCrypto ? nextSymbol : undefined,
+          coingeckoId: isCrypto ? nextCoingeckoId : null,
           shares: nextShares,
           loadValueEur: nextLoadValue,
         });
@@ -234,8 +289,10 @@ export function PositionEditModal({ position, onClose }: Props) {
 
       setSaving(false);
       animateClose();
-    } catch {
-      setError("Could not save changes. Please try again.");
+    } catch (err) {
+      setError(
+        err instanceof Error ? err.message : "Could not save changes. Please try again.",
+      );
       setSaving(false);
     }
   }
@@ -256,24 +313,109 @@ export function PositionEditModal({ position, onClose }: Props) {
         role="dialog"
         aria-modal="true"
         aria-labelledby={`${formId}-title`}
-        className={`relative w-full max-w-md rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl ${panelClass}`}
+        className={`relative max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-xl border border-zinc-800 bg-zinc-900 p-6 shadow-xl ${panelClass}`}
         onClick={(event) => event.stopPropagation()}
       >
         <h2 id={`${formId}-title`} className="text-lg font-semibold text-zinc-100">
           Edit position
         </h2>
         <p className="mt-1 text-sm text-zinc-400">
-          {position.title}
-          {(position.isin ?? position.symbol) && (
-            <span className="ml-2 font-mono text-zinc-500">
-              {position.symbol ?? position.isin}
-            </span>
-          )}
+          Update instrument details, shares, and load value.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-5">
+          <div>
+            <label
+              htmlFor={`${formId}-title`}
+              className="mb-1.5 block text-sm font-medium text-zinc-400"
+            >
+              Title
+            </label>
+            <input
+              id={`${formId}-title`}
+              value={title}
+              disabled={saving}
+              onChange={(event) => setTitle(event.target.value)}
+              required
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
+            />
+          </div>
+
+          {isCrypto ? (
+            <>
+              <div>
+                <label
+                  htmlFor={`${formId}-symbol`}
+                  className="mb-1.5 block text-sm font-medium text-zinc-400"
+                >
+                  Symbol
+                </label>
+                <input
+                  id={`${formId}-symbol`}
+                  value={symbol}
+                  disabled={saving}
+                  onChange={(event) => setSymbol(event.target.value)}
+                  required
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm uppercase text-zinc-100 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor={`${formId}-coingecko`}
+                  className="mb-1.5 block text-sm font-medium text-zinc-400"
+                >
+                  CoinGecko ID
+                </label>
+                <input
+                  id={`${formId}-coingecko`}
+                  value={coingeckoId}
+                  disabled={saving}
+                  onChange={(event) => setCoingeckoId(event.target.value)}
+                  required
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+              </div>
+            </>
+          ) : (
+            <>
+              <div>
+                <label
+                  htmlFor={`${formId}-isin`}
+                  className="mb-1.5 block text-sm font-medium text-zinc-400"
+                >
+                  ISIN
+                </label>
+                <input
+                  id={`${formId}-isin`}
+                  value={isin}
+                  disabled={saving}
+                  onChange={(event) => setIsin(event.target.value)}
+                  required
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm uppercase text-zinc-100 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor={`${formId}-mic`}
+                  className="mb-1.5 block text-sm font-medium text-zinc-400"
+                >
+                  MIC code{" "}
+                  <span className="font-normal text-zinc-500">(optional)</span>
+                </label>
+                <input
+                  id={`${formId}-mic`}
+                  value={micCode}
+                  disabled={saving}
+                  onChange={(event) => setMicCode(event.target.value)}
+                  placeholder="XETR"
+                  className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm uppercase text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
+                />
+              </div>
+            </>
+          )}
+
           <NumericFieldEditor
-            id={sharesId}
+            id={`${formId}-shares`}
             label="Shares"
             current={currentShares}
             rawCurrent={position.shares}
@@ -294,7 +436,7 @@ export function PositionEditModal({ position, onClose }: Props) {
           />
 
           <NumericFieldEditor
-            id={loadValueId}
+            id={`${formId}-load-value`}
             label="Load value (EUR)"
             current={currentLoadValue}
             rawCurrent={position.loadValueEur}
