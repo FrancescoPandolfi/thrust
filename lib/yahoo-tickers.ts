@@ -16,6 +16,10 @@ const YAHOO_TICKERS: Readonly<
     XMIL: "SWDA.MI",
     XLON: "SWDA.L",
   },
+  LU1437018598: {
+    XPAR: "EGOV.PA",
+    XMIL: "EGOV.MI",
+  },
 };
 
 export function lookupYahooTicker(
