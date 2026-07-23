@@ -7,6 +7,8 @@ import {
   NavigationProgressProvider,
   useNavigationProgress,
 } from "@/components/NavigationProgress";
+import { PortfolioSwitcher } from "@/components/PortfolioSwitcher";
+import type { PortfolioSummary, PortfolioViewContext } from "@/lib/portfolios";
 import type { UserRole } from "@/lib/schema";
 
 const NAV = [
@@ -21,23 +23,31 @@ const ADMIN_NAV = [{ href: "/settings/users", label: "Users" }];
 
 type AppShellNavProps = {
   role: UserRole;
+  readOnly: boolean;
+  portfolios: PortfolioSummary[];
+  portfolioContext: PortfolioViewContext | null;
 };
 
-function AppShellNav({ role }: AppShellNavProps) {
+function AppShellNav({
+  role,
+  readOnly,
+  portfolios,
+  portfolioContext,
+}: AppShellNavProps) {
   const pathname = usePathname();
   const { start } = useNavigationProgress();
   const navItems = role === "admin" ? [...NAV, ...ADMIN_NAV] : NAV;
 
   return (
     <>
-      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between px-4 sm:px-6">
-        <div className="flex items-center gap-8">
+      <div className="mx-auto flex h-14 max-w-7xl items-center justify-between gap-3 px-4 sm:px-6">
+        <div className="flex min-w-0 items-center gap-4 sm:gap-8">
           <Link
             href="/"
             onClick={() => {
               if (pathname !== "/") start();
             }}
-            className="text-lg font-semibold text-accent"
+            className="shrink-0 text-lg font-semibold text-accent"
           >
             Thrust
           </Link>
@@ -66,8 +76,12 @@ function AppShellNav({ role }: AppShellNavProps) {
             })}
           </nav>
         </div>
-        <div className="flex items-center gap-3">
-          {role === "viewer" && (
+        <div className="flex shrink-0 items-center gap-2 sm:gap-3">
+          <PortfolioSwitcher
+            portfolios={portfolios}
+            context={portfolioContext}
+          />
+          {readOnly && (
             <span className="hidden rounded-md border border-zinc-700 bg-zinc-800/60 px-2.5 py-1 text-xs font-medium text-zinc-400 sm:inline">
               Read-only
             </span>
@@ -111,15 +125,26 @@ function AppShellNav({ role }: AppShellNavProps) {
 export function AppShell({
   children,
   role,
+  readOnly,
+  portfolios,
+  portfolioContext,
 }: {
   children: React.ReactNode;
   role: UserRole;
+  readOnly: boolean;
+  portfolios: PortfolioSummary[];
+  portfolioContext: PortfolioViewContext | null;
 }) {
   return (
     <NavigationProgressProvider>
       <div className="min-h-full flex flex-col">
         <header className="sticky top-0 z-50 border-b border-zinc-800 bg-zinc-900/80 backdrop-blur">
-          <AppShellNav role={role} />
+          <AppShellNav
+            role={role}
+            readOnly={readOnly}
+            portfolios={portfolios}
+            portfolioContext={portfolioContext}
+          />
         </header>
         <main className="mx-auto w-full max-w-7xl flex-1 px-4 py-6 sm:px-6">
           {children}

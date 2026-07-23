@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getCurrentUserRole, isAuthenticated } from "@/lib/auth";
+import {
+  getPortfolioContext,
+  isAuthenticated,
+} from "@/lib/auth";
 import { productionErrorMessage } from "@/lib/env";
 import { logProductionError } from "@/lib/errors";
 import { allQuotesStale, getQuotes } from "@/lib/prices";
@@ -10,12 +13,26 @@ import {
 import { getDb } from "@/lib/db";
 import { positionToInstrument } from "@/lib/instruments";
 import { positions } from "@/lib/schema";
+import { inArray } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
 async function fetchQuotes(options: { refresh: boolean; force: boolean }) {
+  const context = await getPortfolioContext();
+  if (!context) {
+    return getQuotes([], options);
+  }
+
+  const portfolioIds =
+    context.viewMode === "aggregate"
+      ? context.aggregatePortfolioIds
+      : [context.id];
+
   const db = getDb();
-  const rows = await db.select().from(positions);
+  const rows = await db
+    .select()
+    .from(positions)
+    .where(inArray(positions.portfolioId, portfolioIds));
   const instruments = rows.map(positionToInstrument);
   return getQuotes(instruments, options);
 }
@@ -46,8 +63,8 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const role = await getCurrentUserRole();
-  if (role !== "admin") {
+  const context = await getPortfolioContext();
+  if (!context || context.readOnly) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
 

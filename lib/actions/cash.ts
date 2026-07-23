@@ -2,8 +2,9 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { requireWriteAccess } from "@/lib/auth";
+import { requirePortfolioWriteAccess } from "@/lib/auth";
 import { getDb } from "@/lib/db";
+import { verifyCashInActivePortfolio } from "@/lib/portfolio";
 import { cashBalances } from "@/lib/schema";
 
 export async function updateCashBalance(
@@ -11,7 +12,12 @@ export async function updateCashBalance(
   label: string,
   amountEur: number,
 ) {
-  await requireWriteAccess();
+  await requirePortfolioWriteAccess();
+  const current = await verifyCashInActivePortfolio(id);
+  if (!current) {
+    throw new Error("Cash balance not found");
+  }
+
   const db = getDb();
   await db
     .update(cashBalances)
@@ -26,9 +32,10 @@ export async function updateCashBalance(
 }
 
 export async function addCashBalance(label: string, amountEur: number) {
-  await requireWriteAccess();
+  const context = await requirePortfolioWriteAccess();
   const db = getDb();
   await db.insert(cashBalances).values({
+    portfolioId: context.id,
     label: label.trim(),
     amountEur: String(amountEur),
   });
@@ -37,7 +44,12 @@ export async function addCashBalance(label: string, amountEur: number) {
 }
 
 export async function deleteCashBalance(id: string) {
-  await requireWriteAccess();
+  await requirePortfolioWriteAccess();
+  const current = await verifyCashInActivePortfolio(id);
+  if (!current) {
+    throw new Error("Cash balance not found");
+  }
+
   const db = getDb();
   await db.delete(cashBalances).where(eq(cashBalances.id, id));
   revalidatePath("/");

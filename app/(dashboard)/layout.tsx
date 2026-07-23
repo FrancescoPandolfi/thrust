@@ -1,5 +1,9 @@
 import { AppShell } from "@/components/AppShell";
-import { getCurrentUserRole } from "@/lib/auth";
+import {
+  getCurrentUserRole,
+  getPortfolioContext,
+  listAccessiblePortfolios,
+} from "@/lib/auth";
 import { redirect } from "next/navigation";
 
 export default async function DashboardLayout({
@@ -7,10 +11,25 @@ export default async function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const role = await getCurrentUserRole();
+  const [role, portfolioContext, portfolios] = await Promise.all([
+    getCurrentUserRole(),
+    getPortfolioContext(),
+    listAccessiblePortfolios(),
+  ]);
   if (!role) {
     redirect("/login");
   }
 
-  return <AppShell role={role}>{children}</AppShell>;
+  const readOnly = portfolioContext?.readOnly ?? true;
+
+  return (
+    <AppShell
+      role={role}
+      readOnly={readOnly}
+      portfolios={portfolios}
+      portfolioContext={portfolioContext}
+    >
+      {children}
+    </AppShell>
+  );
 }

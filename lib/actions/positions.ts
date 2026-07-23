@@ -2,12 +2,13 @@
 
 import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
-import { requireWriteAccess } from "@/lib/auth";
+import { requirePortfolioWriteAccess } from "@/lib/auth";
 import { recordCapitalFlow } from "@/lib/capital-flows";
 import { computePortfolio } from "@/lib/calculations";
 import { getDb } from "@/lib/db";
 import { formatSharesForStorage } from "@/lib/format";
 import { normalizeInstrument, positionToInstrument } from "@/lib/instruments";
+import { verifyPositionInActivePortfolio } from "@/lib/portfolio";
 import { getQuoteMap } from "@/lib/prices";
 import { positions } from "@/lib/schema";
 
@@ -20,13 +21,8 @@ export async function updatePosition(
   id: string,
   data: { shares: number; loadValueEur: number },
 ) {
-  await requireWriteAccess();
-  const db = getDb();
-  const [current] = await db
-    .select()
-    .from(positions)
-    .where(eq(positions.id, id))
-    .limit(1);
+  const context = await requirePortfolioWriteAccess();
+  const current = await verifyPositionInActivePortfolio(id);
   if (!current) {
     throw new Error("Position not found");
   }
@@ -35,6 +31,7 @@ export async function updatePosition(
   const sharesDelta = data.shares - toNum(current.shares);
   if (loadDelta !== 0) {
     await recordCapitalFlow({
+      portfolioId: context.id,
       amountEur: loadDelta,
       positionId: id,
       title: current.title,
@@ -42,6 +39,7 @@ export async function updatePosition(
     });
   }
 
+  const db = getDb();
   await db
     .update(positions)
     .set({
@@ -52,6 +50,7 @@ export async function updatePosition(
     .where(eq(positions.id, id));
   revalidatePath("/");
   revalidatePath("/returns");
+  revalidatePath("/flows");
 }
 
 export async function addPosition(data: {
@@ -65,7 +64,7 @@ export async function addPosition(data: {
   shares: number;
   loadValueEur: number;
 }) {
-  await requireWriteAccess();
+  const context = await requirePortfolioWriteAccess();
   const instrument = normalizeInstrument({
     isin: data.category === "crypto" ? null : (data.isin ?? null),
     micCode: data.category === "crypto" ? null : (data.micCode ?? null),
@@ -89,6 +88,7 @@ export async function addPosition(data: {
   const [inserted] = await db
     .insert(positions)
     .values({
+      portfolioId: context.id,
       isin: instrument.isin,
       symbol: instrument.symbol,
       micCode: instrument.micCode,
@@ -103,6 +103,7 @@ export async function addPosition(data: {
 
   if (data.loadValueEur !== 0) {
     await recordCapitalFlow({
+      portfolioId: context.id,
       amountEur: data.loadValueEur,
       positionId: inserted.id,
       title: data.title,
@@ -112,16 +113,12 @@ export async function addPosition(data: {
 
   revalidatePath("/");
   revalidatePath("/returns");
+  revalidatePath("/flows");
 }
 
 export async function deletePosition(id: string) {
-  await requireWriteAccess();
-  const db = getDb();
-  const [current] = await db
-    .select()
-    .from(positions)
-    .where(eq(positions.id, id))
-    .limit(1);
+  const context = await requirePortfolioWriteAccess();
+  const current = await verifyPositionInActivePortfolio(id);
   if (!current) {
     throw new Error("Position not found");
   }
@@ -133,6 +130,7 @@ export async function deletePosition(id: string) {
 
   if (valueEur !== 0) {
     await recordCapitalFlow({
+      portfolioId: context.id,
       amountEur: -valueEur,
       positionId: id,
       title: current.title,
@@ -140,7 +138,9 @@ export async function deletePosition(id: string) {
     });
   }
 
+  const db = getDb();
   await db.delete(positions).where(eq(positions.id, id));
   revalidatePath("/");
   revalidatePath("/returns");
+  revalidatePath("/flows");
 }

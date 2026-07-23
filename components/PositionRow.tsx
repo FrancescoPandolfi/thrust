@@ -3,15 +3,16 @@
 import type { ComputedPosition } from "@/lib/calculations";
 import { formatEur, formatNumber, formatPercentPoints, formatPct, formatUsd, SHARES_DECIMALS } from "@/lib/format";
 import { CopyValueButton } from "./CopyValueButton";
-import { EditIconButton } from "./icons/ActionButtons";
+import { DeleteIconButton, EditIconButton } from "./icons/ActionButtons";
 
 type Props = {
   position: ComputedPosition;
   onEdit: (position: ComputedPosition) => void;
+  onDelete: (position: ComputedPosition) => void;
   readOnly?: boolean;
 };
 
-export function PositionRow({ position, onEdit, readOnly = false }: Props) {
+export function PositionRow({ position, onEdit, onDelete, readOnly = false }: Props) {
   const plPositive = position.plEur >= 0;
   const instrumentLabel = position.symbol ?? position.isin ?? "—";
 
@@ -87,10 +88,16 @@ export function PositionRow({ position, onEdit, readOnly = false }: Props) {
       </td>
       {!readOnly && (
         <td className="px-4 py-2.5 text-right">
-          <EditIconButton
-            label={`Edit ${position.title}`}
-            onClick={() => onEdit(position)}
-          />
+          <div className="flex justify-end gap-2">
+            <EditIconButton
+              label={`Edit ${position.title}`}
+              onClick={() => onEdit(position)}
+            />
+            <DeleteIconButton
+              label={`Remove ${position.title}`}
+              onClick={() => onDelete(position)}
+            />
+          </div>
         </td>
       )}
     </tr>

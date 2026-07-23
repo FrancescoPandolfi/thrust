@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { isAuthorizedCron } from "@/lib/cron-auth";
-import { captureSnapshot } from "@/lib/snapshots";
+import { captureAllSnapshots } from "@/lib/snapshots";
 import { logProductionError } from "@/lib/errors";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +11,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const result = await captureSnapshot();
-    return NextResponse.json({ ok: true, snapshot: result });
+    const snapshots = await captureAllSnapshots();
+    return NextResponse.json({ ok: true, snapshots });
   } catch (error) {
     console.error(error);
     await logProductionError("cron/snapshot", error, {});

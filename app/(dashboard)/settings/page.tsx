@@ -1,5 +1,6 @@
 import { TickerDiagnostics } from "@/components/TickerDiagnostics";
-import { getCurrentUserRole } from "@/lib/auth";
+import Link from "next/link";
+import { getCurrentUserRole, getPortfolioContext } from "@/lib/auth";
 import {
   formatInstrumentLabel,
   positionToInstrument,
@@ -9,6 +10,7 @@ import { getDb } from "@/lib/db";
 import { loadMarketContext } from "@/lib/market-data";
 import { getQuoteProvider, getQuotes, type Quote } from "@/lib/prices";
 import { positions } from "@/lib/schema";
+import { and, eq, inArray } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -27,12 +29,29 @@ function toSnapshot(quote: Quote) {
 }
 
 export default async function SettingsPage() {
-  const [posRows, ctx, role] = await Promise.all([
-    getDb().select().from(positions).orderBy(positions.sortOrder),
+  const [context, ctx, role] = await Promise.all([
+    getPortfolioContext(),
     loadMarketContext(),
     getCurrentUserRole(),
   ]);
-  const readOnly = role === "viewer";
+
+  const portfolioIds =
+    context?.viewMode === "aggregate"
+      ? context.aggregatePortfolioIds
+      : context
+        ? [context.id]
+        : [];
+
+  const posRows =
+    portfolioIds.length > 0
+      ? await getDb()
+          .select()
+          .from(positions)
+          .where(inArray(positions.portfolioId, portfolioIds))
+          .orderBy(positions.sortOrder)
+      : [];
+
+  const readOnly = context?.readOnly ?? role === "viewer";
   const instruments = posRows.map(positionToInstrument);
   const quotes = await getQuotes(instruments);
   const quoteByKey = new Map(quotes.map((q) => [quoteKey(q), q]));
@@ -57,13 +76,23 @@ export default async function SettingsPage() {
 
   return (
     <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-zinc-100">Settings</h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            Verify ISIN mappings and live market data before trusting portfolio
-            values.
+      <div>
+        <h1 className="text-2xl font-semibold text-zinc-100">Settings</h1>
+        <p className="mt-1 text-sm text-zinc-400">
+          Verify ISIN mappings and live market data before trusting portfolio
+          values.
+        </p>
+        {context?.viewMode === "single" && (
+          <p className="mt-2 text-sm">
+            <Link
+              href="/settings/portfolio"
+              className="text-accent hover:underline"
+            >
+              Portfolio settings →
+            </Link>
           </p>
-        </div>
+        )}
+      </div>
       <TickerDiagnostics positions={rows} readOnly={readOnly} />
     </div>
   );

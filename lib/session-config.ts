@@ -3,10 +3,16 @@ import { getSessionSecret } from "@/lib/env";
 
 import type { UserRole } from "@/lib/schema";
 
+export type PortfolioViewMode = "single" | "aggregate";
+
 export type SessionData = {
   isLoggedIn: boolean;
   userId?: string;
   role?: UserRole;
+  activePortfolioId?: string;
+  /** When "aggregate", dashboard shows combined data from aggregatePortfolioIds. */
+  portfolioViewMode?: PortfolioViewMode;
+  aggregatePortfolioIds?: string[];
 };
 
 let cachedSessionOptions: SessionOptions | null = null;

@@ -1,24 +1,39 @@
 import { PortfolioMetrics } from "@/components/charts/PortfolioMetrics";
 import { CashSection } from "@/components/CashSection";
-import { getCurrentUserRole } from "@/lib/auth";
+import { getPortfolioContext } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { loadPortfolioData } from "@/lib/portfolio";
 import { cashBalances } from "@/lib/schema";
+import { inArray } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
 export default async function CashPage() {
+  const context = await getPortfolioContext();
+  const portfolioIds =
+    context?.viewMode === "aggregate"
+      ? context.aggregatePortfolioIds
+      : context
+        ? [context.id]
+        : [];
+
   const db = getDb();
-  const [balances, { totals }, role] = await Promise.all([
-    db.select().from(cashBalances),
+  const [balances, { totals }] = await Promise.all([
+    portfolioIds.length > 0
+      ? db
+          .select()
+          .from(cashBalances)
+          .where(inArray(cashBalances.portfolioId, portfolioIds))
+      : Promise.resolve([]),
     loadPortfolioData(),
-    getCurrentUserRole(),
   ]);
-  const readOnly = role === "viewer";
+  const readOnly = context?.readOnly ?? true;
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold text-zinc-100">Cash</h1>
+      <h1 className="text-2xl font-semibold text-zinc-100">
+        {context?.viewMode === "aggregate" ? "Combined cash" : "Cash"}
+      </h1>
       <PortfolioMetrics
         totalValueEur={totals.totalValueEur}
         totalPlEur={totals.totalPlEur}

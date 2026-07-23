@@ -1,4 +1,5 @@
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, inArray, or } from "drizzle-orm";
+import { getPortfolioContext } from "./auth";
 import { getDb } from "./db";
 import {
   cacheIsin,
@@ -18,9 +19,24 @@ export type RefreshQuotesResult = {
   skipped: number;
 };
 
+async function resolvePortfolioIds(): Promise<string[]> {
+  const context = await getPortfolioContext();
+  if (!context) {
+    throw new Error("No portfolio access");
+  }
+  if (context.viewMode === "aggregate") {
+    return context.aggregatePortfolioIds;
+  }
+  return [context.id];
+}
+
 export async function refreshAllPositionQuotes(): Promise<RefreshQuotesResult> {
+  const portfolioIds = await resolvePortfolioIds();
   const db = getDb();
-  const rows = await db.select().from(positions);
+  const rows = await db
+    .select()
+    .from(positions)
+    .where(inArray(positions.portfolioId, portfolioIds));
   const instruments = rows.map(positionToInstrument);
 
   const quotes = await getQuoteMap(instruments, {
@@ -61,8 +77,12 @@ function uniquePositionInstruments(
 
 /** Latest market-data fetch time across current portfolio positions. */
 export async function getLastQuoteRefreshAt(): Promise<Date | null> {
+  const portfolioIds = await resolvePortfolioIds();
   const db = getDb();
-  const posRows = await db.select().from(positions);
+  const posRows = await db
+    .select()
+    .from(positions)
+    .where(inArray(positions.portfolioId, portfolioIds));
   const instruments = uniquePositionInstruments(
     posRows.map(positionToInstrument).filter(hasInstrumentId),
   );

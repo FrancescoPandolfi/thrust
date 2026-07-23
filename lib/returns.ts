@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, gte, lt, lte } from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, lt, lte } from "drizzle-orm";
 import {
   addDays,
   formatIsoDate,
@@ -7,6 +7,7 @@ import {
   subDays,
 } from "./dates";
 import { getNetFlowsByDate } from "./capital-flows";
+import { getPortfolioContext } from "./auth";
 import { getPositionsValueEur, getRomeDate } from "./snapshots";
 import { getDb } from "./db";
 import { dailySnapshots } from "./schema";
@@ -50,59 +51,140 @@ function computeDailyReturnRow(
   return { date, startValueEur, endValueEur, returnEur, returnPct };
 }
 
-async function getSnapshotForDate(date: string) {
-  const db = getDb();
-  const [row] = await db
-    .select()
-    .from(dailySnapshots)
-    .where(eq(dailySnapshots.date, date))
-    .limit(1);
-  return row ?? null;
+async function resolvePortfolioIds(): Promise<string[]> {
+  const context = await getPortfolioContext();
+  if (!context) {
+    throw new Error("No portfolio access");
+  }
+  if (context.viewMode === "aggregate") {
+    return context.aggregatePortfolioIds;
+  }
+  return [context.id];
 }
 
-async function getPreviousSnapshot(beforeDate: string) {
+async function getSnapshotRowsForDate(date: string, portfolioIds: string[]) {
   const db = getDb();
-  const [row] = await db
+  return db
     .select()
     .from(dailySnapshots)
-    .where(lt(dailySnapshots.date, beforeDate))
-    .orderBy(desc(dailySnapshots.date))
-    .limit(1);
-  return row ?? null;
+    .where(
+      and(
+        eq(dailySnapshots.date, date),
+        inArray(dailySnapshots.portfolioId, portfolioIds),
+      ),
+    );
 }
 
-async function getNextSnapshot(afterDate: string) {
+async function sumSnapshotValueForDate(
+  date: string,
+  portfolioIds: string[],
+): Promise<number | null> {
+  const rows = await getSnapshotRowsForDate(date, portfolioIds);
+  if (rows.length === 0) return null;
+  return rows.reduce((sum, row) => sum + toNum(row.positionsValueEur), 0);
+}
+
+async function getSnapshotForDate(date: string, portfolioIds: string[]) {
+  const total = await sumSnapshotValueForDate(date, portfolioIds);
+  if (total == null) return null;
+  return { date, positionsValueEur: total };
+}
+
+async function getPreviousSnapshot(beforeDate: string, portfolioIds: string[]) {
   const db = getDb();
-  const [row] = await db
+  const rows = await db
     .select()
     .from(dailySnapshots)
-    .where(gt(dailySnapshots.date, afterDate))
-    .orderBy(asc(dailySnapshots.date))
-    .limit(1);
-  return row ?? null;
+    .where(
+      and(
+        lt(dailySnapshots.date, beforeDate),
+        inArray(dailySnapshots.portfolioId, portfolioIds),
+      ),
+    )
+    .orderBy(desc(dailySnapshots.date));
+
+  if (rows.length === 0) return null;
+
+  const latestDate = rows[0].date;
+  const sameDayRows = rows.filter((row) => row.date === latestDate);
+  const total = sameDayRows.reduce(
+    (sum, row) => sum + toNum(row.positionsValueEur),
+    0,
+  );
+  return { date: latestDate, positionsValueEur: total };
 }
 
-export async function getDailyReturns(
-  from?: string,
-  to?: string,
-): Promise<DailyReturnRow[]> {
+async function getNextSnapshot(afterDate: string, portfolioIds: string[]) {
   const db = getDb();
-  const fromDate = from ?? defaultFromDate();
-  const toDate = to ?? getRomeDate();
-  const snapshotThrough = formatIsoDate(addDays(parseIsoDate(toDate), 1));
+  const rows = await db
+    .select()
+    .from(dailySnapshots)
+    .where(
+      and(
+        gt(dailySnapshots.date, afterDate),
+        inArray(dailySnapshots.portfolioId, portfolioIds),
+      ),
+    )
+    .orderBy(asc(dailySnapshots.date));
 
+  if (rows.length === 0) return null;
+
+  const earliestDate = rows[0].date;
+  const sameDayRows = rows.filter((row) => row.date === earliestDate);
+  const total = sameDayRows.reduce(
+    (sum, row) => sum + toNum(row.positionsValueEur),
+    0,
+  );
+  return { date: earliestDate, positionsValueEur: total };
+}
+
+async function getAggregatedSnapshotSeries(
+  fromDate: string,
+  toDate: string,
+  portfolioIds: string[],
+) {
+  const db = getDb();
   const rows = await db
     .select()
     .from(dailySnapshots)
     .where(
       and(
         gte(dailySnapshots.date, fromDate),
-        lte(dailySnapshots.date, snapshotThrough),
+        lte(dailySnapshots.date, toDate),
+        inArray(dailySnapshots.portfolioId, portfolioIds),
       ),
     )
     .orderBy(asc(dailySnapshots.date));
 
-  const flowsByDate = await getNetFlowsByDate(fromDate, toDate);
+  const byDate = new Map<string, number>();
+  for (const row of rows) {
+    byDate.set(
+      row.date,
+      (byDate.get(row.date) ?? 0) + toNum(row.positionsValueEur),
+    );
+  }
+
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, positionsValueEur]) => ({ date, positionsValueEur }));
+}
+
+export async function getDailyReturns(
+  from?: string,
+  to?: string,
+): Promise<DailyReturnRow[]> {
+  const portfolioIds = await resolvePortfolioIds();
+  const fromDate = from ?? defaultFromDate();
+  const toDate = to ?? getRomeDate();
+  const snapshotThrough = formatIsoDate(addDays(parseIsoDate(toDate), 1));
+
+  const rows = await getAggregatedSnapshotSeries(
+    fromDate,
+    snapshotThrough,
+    portfolioIds,
+  );
+
+  const flowsByDate = await getNetFlowsByDate(fromDate, toDate, portfolioIds);
 
   const returns: DailyReturnRow[] = [];
   for (let i = 0; i < rows.length - 1; i++) {
@@ -113,8 +195,8 @@ export async function getDailyReturns(
     returns.push(
       computeDailyReturnRow(
         startSnap.date,
-        toNum(startSnap.positionsValueEur),
-        toNum(endSnap.positionsValueEur),
+        startSnap.positionsValueEur,
+        endSnap.positionsValueEur,
         flowsByDate.get(startSnap.date) ?? 0,
       ),
     );
@@ -152,52 +234,43 @@ export async function getSnapshotsForChart(
   from?: string,
   to?: string,
 ): Promise<ChartPoint[]> {
-  const db = getDb();
+  const portfolioIds = await resolvePortfolioIds();
   const fromDate = from ?? defaultFromDate();
   const toDate = to ?? getRomeDate();
 
-  const rows = await db
-    .select()
-    .from(dailySnapshots)
-    .where(
-      and(
-        gte(dailySnapshots.date, fromDate),
-        lte(dailySnapshots.date, toDate),
-      ),
-    )
-    .orderBy(dailySnapshots.date);
-
+  const rows = await getAggregatedSnapshotSeries(fromDate, toDate, portfolioIds);
   return rows.map((row) => ({
     date: row.date,
-    positionsValueEur: toNum(row.positionsValueEur),
+    positionsValueEur: row.positionsValueEur,
   }));
 }
 
 export async function getTodaySummary() {
+  const portfolioIds = await resolvePortfolioIds();
   const today = getRomeDate();
 
-  const todaySnap = await getSnapshotForDate(today);
-  const prevSnap = await getPreviousSnapshot(today);
-  const nextSnap = await getNextSnapshot(today);
+  const todaySnap = await getSnapshotForDate(today, portfolioIds);
+  const prevSnap = await getPreviousSnapshot(today, portfolioIds);
+  const nextSnap = await getNextSnapshot(today, portfolioIds);
 
   let liveValue: number | null = null;
   try {
-    liveValue = await getPositionsValueEur(false);
+    liveValue = await getPositionsValueEur(false, portfolioIds);
   } catch {
     liveValue = null;
   }
 
   const startValue = todaySnap
-    ? toNum(todaySnap.positionsValueEur)
+    ? todaySnap.positionsValueEur
     : prevSnap
-      ? toNum(prevSnap.positionsValueEur)
+      ? prevSnap.positionsValueEur
       : null;
   const endValue = liveValue;
 
   let returnEur: number | null = null;
   let returnPct: number | null = null;
   if (startValue != null && endValue != null) {
-    const flowsByDate = await getNetFlowsByDate(today, today);
+    const flowsByDate = await getNetFlowsByDate(today, today, portfolioIds);
     const netFlowEur = flowsByDate.get(today) ?? 0;
     returnEur = endValue - startValue - netFlowEur;
     returnPct = startValue > 0 ? returnEur / startValue : 0;
