@@ -1,5 +1,7 @@
+import { PortfolioDeleteSection } from "@/components/PortfolioDeleteSection";
 import { PortfolioMemberManagement } from "@/components/PortfolioMemberManagement";
 import { PortfolioRenameForm } from "@/components/PortfolioRenameForm";
+import { PortfolioReturnsResetSection } from "@/components/PortfolioReturnsResetSection";
 import {
   getPortfolioContext,
   listAccessiblePortfolios,
@@ -21,7 +23,8 @@ export default async function PortfolioSettingsPage() {
       <div className="space-y-4">
         <h1 className="text-2xl font-semibold text-zinc-100">Portfolio settings</h1>
         <p className="text-sm text-zinc-400">
-          Switch to a single portfolio to rename it or manage members. Combined view is read-only.
+          Switch to a single portfolio to rename, delete, or manage members.
+          Combined view is read-only.
         </p>
         <ul className="list-inside list-disc text-sm text-zinc-300">
           {portfolios.map((p) => (
@@ -32,14 +35,17 @@ export default async function PortfolioSettingsPage() {
     );
   }
 
-  const members = await listPortfolioMembers(context.id);
+  const [members, accessiblePortfolios] = await Promise.all([
+    listPortfolioMembers(context.id),
+    listAccessiblePortfolios(),
+  ]);
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold text-zinc-100">Portfolio settings</h1>
         <p className="mt-1 text-sm text-zinc-400">
-          Rename this portfolio and control who can access it.
+          Rename, share, or delete this portfolio.
         </p>
       </div>
       <PortfolioRenameForm
@@ -50,6 +56,16 @@ export default async function PortfolioSettingsPage() {
         portfolioName={context.name}
         portfolioRole={context.role}
         members={members}
+      />
+      <PortfolioReturnsResetSection
+        portfolioName={context.name}
+        portfolioRole={context.role}
+        showResetAll={accessiblePortfolios.length > 1}
+      />
+      <PortfolioDeleteSection
+        portfolioName={context.name}
+        portfolioRole={context.role}
+        canDelete={accessiblePortfolios.length > 1}
       />
     </div>
   );

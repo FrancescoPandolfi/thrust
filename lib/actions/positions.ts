@@ -21,6 +21,7 @@ export async function updatePosition(
   id: string,
   data: {
     title: string;
+    category: "equity_etf" | "bond_etf" | "crypto";
     isin?: string;
     micCode?: string | null;
     symbol?: string;
@@ -40,23 +41,25 @@ export async function updatePosition(
     throw new Error("Title is required");
   }
 
+  const isCrypto = data.category === "crypto";
+  const categoryChanged = data.category !== current.category;
+
   const instrument = normalizeInstrument({
-    isin: current.category === "crypto" ? null : (data.isin ?? null),
-    micCode: current.category === "crypto" ? null : (data.micCode ?? null),
-    symbol: current.category === "crypto" ? (data.symbol ?? null) : null,
-    yahooSymbol: current.yahooSymbol,
-    coingeckoId:
-      current.category === "crypto" ? (data.coingeckoId ?? null) : current.coingeckoId,
-    category: current.category,
+    isin: isCrypto ? null : (data.isin ?? null),
+    micCode: isCrypto ? null : (data.micCode ?? null),
+    symbol: isCrypto ? (data.symbol ?? null) : null,
+    yahooSymbol: categoryChanged ? null : current.yahooSymbol,
+    coingeckoId: isCrypto ? (data.coingeckoId ?? null) : null,
+    category: data.category,
   });
 
-  if (current.category === "crypto" && !instrument.symbol) {
+  if (isCrypto && !instrument.symbol) {
     throw new Error("Symbol is required for crypto");
   }
-  if (current.category === "crypto" && !instrument.coingeckoId) {
+  if (isCrypto && !instrument.coingeckoId) {
     throw new Error("CoinGecko ID is required for crypto");
   }
-  if (current.category !== "crypto" && !instrument.isin) {
+  if (!isCrypto && !instrument.isin) {
     throw new Error("ISIN is required");
   }
 
@@ -77,6 +80,7 @@ export async function updatePosition(
     .update(positions)
     .set({
       title: trimmedTitle,
+      category: data.category,
       isin: instrument.isin,
       symbol: instrument.symbol,
       micCode: instrument.micCode,

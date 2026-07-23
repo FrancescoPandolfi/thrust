@@ -12,6 +12,7 @@ import {
 import {
   addPortfolioMember,
   createPortfolio,
+  deletePortfolio,
   listPortfolioMembers,
   listUserPortfolios,
   removePortfolioMember,
@@ -20,6 +21,11 @@ import {
   type PortfolioMemberRow,
   type PortfolioSummary,
 } from "@/lib/portfolios";
+import {
+  resetAllPortfolioReturns,
+  resetPortfolioReturns,
+  type ResetPortfolioReturnsResult,
+} from "@/lib/returns-reset";
 import type { PortfolioRole } from "@/lib/schema";
 
 const REVALIDATE_PATHS = [
@@ -127,6 +133,123 @@ export async function renamePortfolioAction(
     return {
       ok: false,
       error: error instanceof Error ? error.message : "Failed to rename portfolio",
+    };
+  }
+}
+
+export async function deletePortfolioAction(): Promise<
+  { ok: true } | { ok: false; error: string }
+> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return { ok: false, error: "Unauthorized" };
+    }
+
+    const context = await requirePortfolioContext();
+    if (context.viewMode === "aggregate") {
+      return { ok: false, error: "Switch to a single portfolio first" };
+    }
+    if (context.role !== "owner") {
+      return { ok: false, error: "Only the owner can delete this portfolio" };
+    }
+
+    const remaining = (await listUserPortfolios(userId)).filter(
+      (portfolio) => portfolio.id !== context.id,
+    );
+    if (remaining.length === 0) {
+      return { ok: false, error: "You must keep at least one portfolio" };
+    }
+
+    await deletePortfolio(context.id, userId);
+    await setActivePortfolio(remaining[0].id);
+    revalidatePortfolioPaths();
+    return { ok: true };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to delete portfolio",
+    };
+  }
+}
+
+export async function resetPortfolioReturnsAction(
+  captureBaseline = true,
+): Promise<
+  | {
+      ok: true;
+      snapshotsDeleted: number;
+      flowsDeleted: number;
+      baselineCaptured: boolean;
+    }
+  | { ok: false; error: string }
+> {
+  try {
+    const context = await requirePortfolioContext();
+    if (context.viewMode === "aggregate") {
+      return { ok: false, error: "Switch to a single portfolio first" };
+    }
+    if (context.role !== "owner") {
+      return { ok: false, error: "Only the owner can reset return history" };
+    }
+
+    const result = await resetPortfolioReturns(context.id, { captureBaseline });
+    revalidatePortfolioPaths();
+    return {
+      ok: true,
+      snapshotsDeleted: result.snapshotsDeleted,
+      flowsDeleted: result.flowsDeleted,
+      baselineCaptured: result.baselineCaptured,
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to reset returns",
+    };
+  }
+}
+
+export async function resetAllPortfolioReturnsAction(
+  captureBaseline = true,
+): Promise<
+  | {
+      ok: true;
+      portfolios: ResetPortfolioReturnsResult[];
+      totalSnapshots: number;
+      totalFlows: number;
+    }
+  | { ok: false; error: string }
+> {
+  try {
+    const userId = await getCurrentUserId();
+    if (!userId) {
+      return { ok: false, error: "Unauthorized" };
+    }
+
+    const memberships = await listUserPortfolios(userId);
+    const owned = memberships.filter((portfolio) => portfolio.role === "owner");
+    if (owned.length === 0) {
+      return { ok: false, error: "Forbidden" };
+    }
+
+    const results: ResetPortfolioReturnsResult[] = [];
+    for (const portfolio of owned) {
+      results.push(
+        await resetPortfolioReturns(portfolio.id, { captureBaseline }),
+      );
+    }
+
+    revalidatePortfolioPaths();
+    return {
+      ok: true,
+      portfolios: results,
+      totalSnapshots: results.reduce((sum, r) => sum + r.snapshotsDeleted, 0),
+      totalFlows: results.reduce((sum, r) => sum + r.flowsDeleted, 0),
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      error: error instanceof Error ? error.message : "Failed to reset returns",
     };
   }
 }

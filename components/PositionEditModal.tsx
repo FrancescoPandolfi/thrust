@@ -4,8 +4,10 @@ import { useEffect, useId, useState } from "react";
 import { useRouter } from "next/navigation";
 import { updatePosition } from "@/lib/actions/positions";
 import type { ComputedPosition } from "@/lib/calculations";
+import { CATEGORY_LABELS } from "@/lib/calculations";
 import { CopyValueButton } from "@/components/CopyValueButton";
 import { formatEur, formatNumber, parseDecimal, SHARES_DECIMALS } from "@/lib/format";
+import type { Category } from "@/lib/schema";
 
 type Props = {
   position: ComputedPosition;
@@ -13,6 +15,12 @@ type Props = {
 };
 
 type EditMode = "set" | "adjust";
+
+const CATEGORIES: Category[] = ["equity_etf", "bond_etf", "crypto"];
+
+function isCategory(value: string): value is Category {
+  return value === "equity_etf" || value === "bond_etf" || value === "crypto";
+}
 
 function formatFieldValue(value: number, decimals: number): string {
   return formatNumber(value, decimals);
@@ -172,12 +180,12 @@ function NumericFieldEditor({
 export function PositionEditModal({ position, onClose }: Props) {
   const router = useRouter();
   const formId = useId();
-  const isCrypto = position.category === "crypto";
 
   const currentShares = Number.parseFloat(position.shares);
   const currentLoadValue = Number.parseFloat(position.loadValueEur);
 
   const [title, setTitle] = useState(position.title);
+  const [category, setCategory] = useState<Category>(position.category);
   const [isin, setIsin] = useState(position.isin ?? "");
   const [micCode, setMicCode] = useState(position.micCode ?? "");
   const [symbol, setSymbol] = useState(position.symbol ?? "");
@@ -189,6 +197,8 @@ export function PositionEditModal({ position, onClose }: Props) {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [closing, setClosing] = useState(false);
+
+  const isCrypto = category === "crypto";
 
   function animateClose() {
     setClosing(true);
@@ -216,14 +226,16 @@ export function PositionEditModal({ position, onClose }: Props) {
   }, [saving, closing]);
 
   function hasMetadataChanges(
+    nextCategory: Category,
     nextTitle: string,
     nextIsin: string,
     nextMicCode: string,
     nextSymbol: string,
     nextCoingeckoId: string,
   ): boolean {
+    if (nextCategory !== position.category) return true;
     if (nextTitle.trim() !== position.title) return true;
-    if (isCrypto) {
+    if (nextCategory === "crypto") {
       return (
         nextSymbol.trim().toUpperCase() !== (position.symbol ?? "").toUpperCase() ||
         nextCoingeckoId.trim() !== (position.coingeckoId ?? "")
@@ -267,6 +279,7 @@ export function PositionEditModal({ position, onClose }: Props) {
         nextShares !== currentShares ||
         nextLoadValue !== currentLoadValue ||
         hasMetadataChanges(
+          category,
           nextTitle,
           nextIsin,
           nextMicCode,
@@ -277,6 +290,7 @@ export function PositionEditModal({ position, onClose }: Props) {
       if (changed) {
         await updatePosition(position.id, {
           title: nextTitle,
+          category,
           isin: isCrypto ? undefined : nextIsin,
           micCode: isCrypto ? null : nextMicCode || null,
           symbol: isCrypto ? nextSymbol : undefined,
@@ -339,6 +353,31 @@ export function PositionEditModal({ position, onClose }: Props) {
               required
               className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
             />
+          </div>
+
+          <div>
+            <label
+              htmlFor={`${formId}-category`}
+              className="mb-1.5 block text-sm font-medium text-zinc-400"
+            >
+              Category
+            </label>
+            <select
+              id={`${formId}-category`}
+              value={category}
+              disabled={saving}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (isCategory(value)) setCategory(value);
+              }}
+              className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 text-sm text-zinc-100 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
+            >
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {CATEGORY_LABELS[cat]}
+                </option>
+              ))}
+            </select>
           </div>
 
           {isCrypto ? (

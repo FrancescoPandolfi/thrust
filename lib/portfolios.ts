@@ -150,6 +150,34 @@ export async function renamePortfolio(
   };
 }
 
+export async function deletePortfolio(
+  portfolioId: string,
+  userId: string,
+): Promise<void> {
+  const membership = await getPortfolioMembership(portfolioId, userId);
+  if (!membership) {
+    throw new Error("Portfolio not found");
+  }
+  if (membership.role !== "owner") {
+    throw new Error("Only the portfolio owner can delete it");
+  }
+
+  const userPortfolios = await listUserPortfolios(userId);
+  if (userPortfolios.length <= 1) {
+    throw new Error("You must keep at least one portfolio");
+  }
+
+  const db = getDb();
+  const [deleted] = await db
+    .delete(portfolios)
+    .where(eq(portfolios.id, portfolioId))
+    .returning({ id: portfolios.id });
+
+  if (!deleted) {
+    throw new Error("Portfolio not found");
+  }
+}
+
 export async function listPortfolioMembers(
   portfolioId: string,
 ): Promise<PortfolioMemberRow[]> {

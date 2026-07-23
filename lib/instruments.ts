@@ -1,4 +1,5 @@
 import type { Category, Position } from "./schema";
+import { lookupYahooTicker } from "./yahoo-tickers";
 
 export type InstrumentRef = {
   isin: string | null;
@@ -149,6 +150,9 @@ export function toYahooSymbol(
   if (normalized.yahooSymbol) return normalized.yahooSymbol;
 
   if (normalized.isin && normalized.micCode) {
+    const mapped = lookupYahooTicker(normalized.isin, normalized.micCode);
+    if (mapped) return mapped;
+
     const suffix = ctx.exchanges.get(normalized.micCode);
     if (suffix) return `${normalized.isin}.${suffix}`;
   }

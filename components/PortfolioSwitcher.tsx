@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import {
   createPortfolioAction,
   setAggregateViewAction,
@@ -29,6 +29,38 @@ export function PortfolioSwitcher({ portfolios, context }: Props) {
           : portfolios.map((p) => p.id),
       ),
   );
+  const [open, setOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+
+    function closeMenu() {
+      setOpen(false);
+      setShowCreate(false);
+      setShowAggregate(false);
+    }
+
+    function handlePointerDown(event: MouseEvent) {
+      if (
+        containerRef.current &&
+        !containerRef.current.contains(event.target as Node)
+      ) {
+        closeMenu();
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") closeMenu();
+    }
+
+    document.addEventListener("mousedown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("mousedown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [open]);
 
   const activeLabel =
     context?.viewMode === "aggregate"
@@ -43,7 +75,10 @@ export function PortfolioSwitcher({ portfolios, context }: Props) {
 
   async function handleSwitch(portfolioId: string) {
     const result = await switchPortfolioAction(portfolioId);
-    if (result.ok) refresh();
+    if (result.ok) {
+      setOpen(false);
+      refresh();
+    }
   }
 
   async function handleCreate(event: React.FormEvent) {
@@ -65,6 +100,7 @@ export function PortfolioSwitcher({ portfolios, context }: Props) {
     const ids = [...selectedAggregate];
     const result = await setAggregateViewAction(ids);
     if (result.ok) {
+      setOpen(false);
       setShowAggregate(false);
       refresh();
     }
@@ -82,12 +118,18 @@ export function PortfolioSwitcher({ portfolios, context }: Props) {
   if (portfolios.length === 0) return null;
 
   return (
-    <div className="relative">
-      <details className="group">
-        <summary className="flex cursor-pointer list-none items-center gap-2 rounded-md border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50">
-          <span className="max-w-[140px] truncate font-medium">{activeLabel}</span>
-          <span className="text-zinc-500">▾</span>
-        </summary>
+    <div className="relative" ref={containerRef}>
+      <button
+        type="button"
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        onClick={() => setOpen((v) => !v)}
+        className="flex cursor-pointer items-center gap-2 rounded-md border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-sm text-zinc-200 hover:bg-zinc-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/50"
+      >
+        <span className="max-w-[140px] truncate font-medium">{activeLabel}</span>
+        <span className="text-zinc-500">▾</span>
+      </button>
+      {open && (
         <div className="absolute right-0 z-50 mt-2 w-64 rounded-lg border border-zinc-700 bg-zinc-900 py-1 shadow-xl">
           <div className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-zinc-500">
             Your portfolios
@@ -189,7 +231,7 @@ export function PortfolioSwitcher({ portfolios, context }: Props) {
             </div>
           )}
         </div>
-      </details>
+      )}
     </div>
   );
 }
