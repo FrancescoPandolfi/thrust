@@ -52,7 +52,7 @@ export function PortfolioMetrics({
       <div className="grid h-[250px] grid-cols-2 grid-rows-2 gap-3">
         <MetricCard
           className="flex flex-col justify-center"
-          label="Total portfolio"
+          label="Total Financial Assets"
           value={formatEur(totalValueEur)}
         />
         <MetricCard
@@ -87,7 +87,7 @@ export function PortfolioMetrics({
     >
       <MetricCard
         className="flex flex-col justify-center"
-        label="Total portfolio"
+        label="Total Financial Assets"
         value={formatEur(totalValueEur)}
       />
       <MetricCard

@@ -29,6 +29,9 @@ type ModalState =
 
 export function PortfolioTable({ positions, totals, readOnly = false }: Props) {
   const groups = groupByCategory(positions);
+  for (const cat of ["equity_etf", "bond_etf", "crypto"] as const) {
+    groups[cat]?.sort((a, b) => b.weightPct - a.weightPct);
+  }
   const [modal, setModal] = useState<ModalState>(null);
 
   return (
