@@ -1,12 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { formatEur, formatNumber, formatDateTime } from "@/lib/format";
 
 type QuoteSnapshot = {
   isin: string | null;
   symbol: string | null;
-  micCode: string | null;
   label: string;
   price: number;
   currency: string;
@@ -19,7 +18,6 @@ type PositionRow = {
   id: string;
   isin: string | null;
   symbol: string | null;
-  micCode: string | null;
   label: string;
   title: string;
   quote: QuoteSnapshot | null;
@@ -31,7 +29,6 @@ type PositionRow = {
 type TestResponse = {
   isin: string | null;
   symbol: string | null;
-  micCode: string | null;
   label?: string;
   provider?: string;
   ok: boolean;
@@ -67,11 +64,6 @@ function statusBadge(ok: boolean, stale?: boolean) {
   );
 }
 
-
-function formatMicCode(micCode: string | null): string {
-  return micCode ?? "—";
-}
-
 export function TickerDiagnostics({
   positions: initial,
   readOnly = false,
@@ -79,9 +71,13 @@ export function TickerDiagnostics({
 }: Props) {
   const [rows, setRows] = useState(initial);
   const [loadingId, setLoadingId] = useState<string | null>(null);
+  const positionsKey = initial.map((p) => p.id).join(",");
+
+  useEffect(() => {
+    setRows(initial);
+  }, [positionsKey, initial]);
   const [isinInput, setIsinInput] = useState("");
   const [symbolInput, setSymbolInput] = useState("");
-  const [micInput, setMicInput] = useState("");
   const [customResult, setCustomResult] = useState<TestResponse | null>(null);
   const [customLoading, setCustomLoading] = useState(false);
 
@@ -92,13 +88,11 @@ export function TickerDiagnostics({
   async function testInstrument(params: {
     isin?: string | null;
     symbol?: string | null;
-    micCode?: string | null;
     refresh?: boolean;
   }): Promise<TestResponse> {
     const query = new URLSearchParams();
     if (params.isin) query.set("isin", params.isin);
     if (params.symbol) query.set("symbol", params.symbol);
-    if (params.micCode) query.set("mic_code", params.micCode);
     if (params.refresh) query.set("refresh", "1");
 
     const response = await fetch(`/api/tickers/test?${query}`);
@@ -113,7 +107,6 @@ export function TickerDiagnostics({
           ...row,
           isin: result.isin ?? row.isin,
           symbol: result.symbol ?? row.symbol,
-          micCode: result.micCode ?? row.micCode,
           label: result.label ?? row.label,
           provider: result.provider ?? row.provider,
           ok: result.ok,
@@ -130,7 +123,6 @@ export function TickerDiagnostics({
       const result = await testInstrument({
         isin: row.isin,
         symbol: row.symbol,
-        micCode: row.micCode,
         refresh: true,
       });
       applyResultToRow(row.id, result);
@@ -151,7 +143,6 @@ export function TickerDiagnostics({
       const result = await testInstrument({
         isin: isin || null,
         symbol: symbol || null,
-        micCode: micInput.trim() || null,
         refresh: true,
       });
       setCustomResult(result);
@@ -181,10 +172,10 @@ export function TickerDiagnostics({
         <section className="rounded-xl border border-zinc-800 bg-zinc-900 p-4">
           <h2 className="text-sm font-semibold text-zinc-200">Test an instrument</h2>
           <p className="mt-1 text-sm text-zinc-400">
-            Enter ISIN + MIC for ETFs (e.g.{" "}
-            <code className="text-zinc-300">IE00B4L5Y983</code> +{" "}
-            <code className="text-zinc-300">XAMS</code>) or symbol for crypto (
-            <code className="text-zinc-300">BTC-EUR</code>).
+            Enter ISIN + Yahoo symbol for ETFs (e.g.{" "}
+            <code className="text-zinc-300">IE00BKM4GZ66</code> +{" "}
+            <code className="text-zinc-300">EMIM.AS</code>) or symbol for crypto (
+            <code className="text-zinc-300">BTC</code>).
           </p>
           <form onSubmit={testCustomInstrument} className="mt-4 flex flex-wrap gap-3">
             <input
@@ -194,16 +185,10 @@ export function TickerDiagnostics({
               className="min-w-[160px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
             />
             <input
-              value={micInput}
-              onChange={(e) => setMicInput(e.target.value)}
-              placeholder="MIC (optional)"
-              className="min-w-[120px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
-            />
-            <input
               value={symbolInput}
               onChange={(e) => setSymbolInput(e.target.value)}
-              placeholder="Symbol (crypto)"
-              className="min-w-[120px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
+              placeholder="Yahoo symbol / crypto symbol"
+              className="min-w-[160px] flex-1 rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none"
             />
             <button
               type="submit"
@@ -270,12 +255,12 @@ export function TickerDiagnostics({
               <tr className="border-b border-zinc-800 text-left text-xs font-medium uppercase tracking-wide text-zinc-400">
                 <th className="px-4 py-3">Status</th>
                 <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3">ISIN / Symbol</th>
-                <th className="px-4 py-3">MIC</th>
+                <th className="px-4 py-3">ISIN</th>
+                <th className="px-4 py-3">Symbol</th>
                 <th className="px-4 py-3">Provider</th>
                 <th className="px-4 py-3 text-right">Price (EUR)</th>
                 <th className="px-4 py-3">Fetched</th>
-                {!readOnly && <th className="px-4 py-3" />}
+                {canRefreshPrices && <th className="px-4 py-3" />}
               </tr>
             </thead>
             <tbody>
@@ -289,10 +274,10 @@ export function TickerDiagnostics({
                   </td>
                   <td className="px-4 py-2.5 text-zinc-200">{row.title}</td>
                   <td className="px-4 py-2.5 font-mono text-xs text-zinc-300">
-                    {row.symbol ?? row.isin ?? "—"}
+                    {row.isin ?? "—"}
                   </td>
                   <td className="px-4 py-2.5 font-mono text-xs text-zinc-300">
-                    {formatMicCode(row.micCode)}
+                    {row.symbol ?? "—"}
                   </td>
                   <td className="px-4 py-2.5 text-xs capitalize text-zinc-400">
                     {row.provider}

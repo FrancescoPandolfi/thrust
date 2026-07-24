@@ -8,6 +8,7 @@ import {
 } from "@/lib/instruments";
 import { getDb } from "@/lib/db";
 import { loadMarketContext } from "@/lib/market-data";
+import { mergePositionsByInstrument } from "@/lib/portfolio";
 import { getQuoteProvider, getQuotes, type Quote } from "@/lib/prices";
 import { positions } from "@/lib/schema";
 import { and, eq, inArray } from "drizzle-orm";
@@ -18,7 +19,6 @@ function toSnapshot(quote: Quote) {
   return {
     isin: quote.isin,
     symbol: quote.symbol,
-    micCode: quote.micCode,
     label: formatInstrumentLabel(quote),
     price: quote.price,
     currency: quote.currency,
@@ -53,11 +53,13 @@ export default async function SettingsPage() {
 
   const readOnly = context?.readOnly ?? role === "viewer";
   const canRefreshPrices = context?.canRefreshPrices ?? !readOnly;
-  const instruments = posRows.map(positionToInstrument);
+  const mergedRows =
+    portfolioIds.length > 1 ? mergePositionsByInstrument(posRows) : posRows;
+  const instruments = mergedRows.map(positionToInstrument);
   const quotes = await getQuotes(instruments);
   const quoteByKey = new Map(quotes.map((q) => [quoteKey(q), q]));
 
-  const rows = posRows.map((pos) => {
+  const rows = mergedRows.map((pos) => {
     const instrument = positionToInstrument(pos);
     const quote = quoteByKey.get(quoteKey(instrument));
     const ok = quote != null && quote.price > 0;
@@ -65,7 +67,6 @@ export default async function SettingsPage() {
       id: pos.id,
       isin: pos.isin,
       symbol: pos.symbol,
-      micCode: pos.micCode,
       label: formatInstrumentLabel(instrument),
       title: pos.title,
       provider: getQuoteProvider(instrument, ctx),
@@ -83,6 +84,11 @@ export default async function SettingsPage() {
           Verify ISIN mappings and live market data before trusting portfolio
           values.
         </p>
+        {context?.viewMode === "aggregate" && (
+          <p className="mt-1 text-sm text-zinc-400">
+            Combined view — duplicate instruments are shown once.
+          </p>
+        )}
         {context?.viewMode === "single" && (
           <p className="mt-2 text-sm">
             <Link

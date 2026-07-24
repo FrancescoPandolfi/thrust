@@ -24,7 +24,7 @@ export function PositionAddModal({ onClose }: Props) {
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState<Category>("equity_etf");
   const [isin, setIsin] = useState("");
-  const [micCode, setMicCode] = useState("");
+  const [etfSymbol, setEtfSymbol] = useState("");
   const [symbol, setSymbol] = useState("");
   const [coingeckoId, setCoingeckoId] = useState("");
   const [shares, setShares] = useState("");
@@ -38,7 +38,7 @@ export function PositionAddModal({ onClose }: Props) {
     title.trim() !== "" &&
     shares.trim() !== "" &&
     loadValueEur.trim() !== "" &&
-    (isCrypto ? symbol.trim() !== "" && coingeckoId.trim() !== "" : isin.trim() !== "");
+    (isCrypto ? symbol.trim() !== "" && coingeckoId.trim() !== "" : isin.trim() !== "" && etfSymbol.trim() !== "");
 
   function animateClose() {
     setClosing(true);
@@ -77,8 +77,7 @@ export function PositionAddModal({ onClose }: Props) {
         title: title.trim(),
         category,
         isin: isCrypto ? undefined : isin.trim(),
-        micCode: isCrypto ? null : micCode.trim() || null,
-        symbol: isCrypto ? symbol.trim() : undefined,
+        symbol: isCrypto ? symbol.trim() : etfSymbol.trim(),
         coingeckoId: isCrypto ? coingeckoId.trim() : null,
         shares: parseDecimal(shares),
         loadValueEur: parseDecimal(loadValueEur),
@@ -117,8 +116,8 @@ export function PositionAddModal({ onClose }: Props) {
           Add position
         </h2>
         <p className="mt-1 text-sm text-zinc-400">
-          Add a new holding to the active portfolio. Prices are fetched from ISIN
-          or symbol mappings.
+          Add a new holding to the active portfolio. ETFs need ISIN and Yahoo
+          symbol; crypto uses symbol and CoinGecko ID.
         </p>
 
         <form onSubmit={handleSubmit} className="mt-6 space-y-4">
@@ -219,22 +218,21 @@ export function PositionAddModal({ onClose }: Props) {
               </div>
               <div>
                 <label
-                  htmlFor={`${formId}-mic`}
+                  htmlFor={`${formId}-etf-symbol`}
                   className="mb-1.5 block text-sm font-medium text-zinc-400"
                 >
-                  MIC code{" "}
-                  <span className="font-normal text-zinc-500">(optional)</span>
+                  Yahoo symbol
                 </label>
                 <input
-                  id={`${formId}-mic`}
-                  value={micCode}
+                  id={`${formId}-etf-symbol`}
+                  value={etfSymbol}
                   disabled={saving}
-                  onChange={(event) => setMicCode(event.target.value)}
-                  placeholder="XETR"
+                  onChange={(event) => setEtfSymbol(event.target.value)}
+                  placeholder="EMIM.AS"
                   className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm uppercase text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
                 />
                 <p className="mt-1 text-xs text-zinc-500">
-                  Exchange MIC for price lookup, e.g. XETR, XAMS, XMIL.
+                  Yahoo Finance ticker for price lookup, e.g. EMIM.AS, IS3N.DE.
                 </p>
               </div>
             </>

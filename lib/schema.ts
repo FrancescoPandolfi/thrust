@@ -76,9 +76,8 @@ export const positions = pgTable("positions", {
     .notNull()
     .references(() => portfolios.id, { onDelete: "cascade" }),
   isin: text("isin"),
+  /** Yahoo Finance ticker for ETFs (e.g. EMIM.AS); trading symbol for crypto. */
   symbol: text("symbol"),
-  micCode: text("mic_code"),
-  yahooSymbol: text("yahoo_symbol"),
   coingeckoId: text("coingecko_id"),
   title: text("title").notNull(),
   category: categoryEnum("category").notNull(),
@@ -103,12 +102,13 @@ export const priceCache = pgTable(
   "price_cache",
   {
     isin: text("isin").notNull(),
-    micCode: text("mic_code").notNull().default(""),
+    /** Yahoo symbol for ETFs; empty for crypto/FX cache rows. */
+    quoteSymbol: text("quote_symbol").notNull().default(""),
     price: numeric("price", { precision: 18, scale: 8 }).notNull(),
     currency: text("currency").notNull(),
     fetchedAt: timestamp("fetched_at", { withTimezone: true }).notNull().defaultNow(),
   },
-  (table) => [primaryKey({ columns: [table.isin, table.micCode] })],
+  (table) => [primaryKey({ columns: [table.isin, table.quoteSymbol] })],
 );
 
 /** Capital added to or withdrawn from positions (positive = in, negative = out). */

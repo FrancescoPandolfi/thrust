@@ -3,7 +3,7 @@ import { getPortfolioContext } from "./auth";
 import { getDb } from "./db";
 import {
   cacheIsin,
-  cacheMicCode,
+  cacheQuoteSymbol,
   hasInstrumentId,
   normalizeInstrument,
   positionToInstrument,
@@ -96,7 +96,7 @@ export async function getLastQuoteRefreshAt(): Promise<Date | null> {
         ...instruments.map((instrument) =>
           and(
             eq(priceCache.isin, cacheIsin(instrument)),
-            eq(priceCache.micCode, cacheMicCode(instrument.micCode)),
+            eq(priceCache.quoteSymbol, cacheQuoteSymbol(instrument)),
           ),
         ),
       ),

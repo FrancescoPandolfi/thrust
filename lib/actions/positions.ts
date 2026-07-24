@@ -17,13 +17,28 @@ function toNum(v: string | number | null | undefined): number {
   return typeof v === "number" ? v : Number.parseFloat(v);
 }
 
+function validateInstrument(
+  instrument: ReturnType<typeof normalizeInstrument>,
+  isCrypto: boolean,
+): void {
+  if (isCrypto) {
+    if (!instrument.symbol) throw new Error("Symbol is required for crypto");
+    if (!instrument.coingeckoId) {
+      throw new Error("CoinGecko ID is required for crypto");
+    }
+    return;
+  }
+
+  if (!instrument.isin) throw new Error("ISIN is required");
+  if (!instrument.symbol) throw new Error("Yahoo symbol is required for ETFs");
+}
+
 export async function updatePosition(
   id: string,
   data: {
     title: string;
     category: "equity_etf" | "bond_etf" | "crypto";
     isin?: string;
-    micCode?: string | null;
     symbol?: string;
     coingeckoId?: string | null;
     shares: number;
@@ -42,26 +57,15 @@ export async function updatePosition(
   }
 
   const isCrypto = data.category === "crypto";
-  const categoryChanged = data.category !== current.category;
 
   const instrument = normalizeInstrument({
     isin: isCrypto ? null : (data.isin ?? null),
-    micCode: isCrypto ? null : (data.micCode ?? null),
-    symbol: isCrypto ? (data.symbol ?? null) : null,
-    yahooSymbol: categoryChanged ? null : current.yahooSymbol,
+    symbol: data.symbol ?? null,
     coingeckoId: isCrypto ? (data.coingeckoId ?? null) : null,
     category: data.category,
   });
 
-  if (isCrypto && !instrument.symbol) {
-    throw new Error("Symbol is required for crypto");
-  }
-  if (isCrypto && !instrument.coingeckoId) {
-    throw new Error("CoinGecko ID is required for crypto");
-  }
-  if (!isCrypto && !instrument.isin) {
-    throw new Error("ISIN is required");
-  }
+  validateInstrument(instrument, isCrypto);
 
   const loadDelta = data.loadValueEur - toNum(current.loadValueEur);
   const sharesDelta = data.shares - toNum(current.shares);
@@ -83,8 +87,6 @@ export async function updatePosition(
       category: data.category,
       isin: instrument.isin,
       symbol: instrument.symbol,
-      micCode: instrument.micCode,
-      yahooSymbol: instrument.yahooSymbol,
       coingeckoId: instrument.coingeckoId,
       shares: formatSharesForStorage(data.shares),
       loadValueEur: String(data.loadValueEur),
@@ -100,8 +102,6 @@ export async function updatePosition(
 export async function addPosition(data: {
   isin?: string;
   symbol?: string;
-  micCode?: string | null;
-  yahooSymbol?: string | null;
   coingeckoId?: string | null;
   title: string;
   category: "equity_etf" | "bond_etf" | "crypto";
@@ -109,24 +109,15 @@ export async function addPosition(data: {
   loadValueEur: number;
 }) {
   const context = await requirePortfolioWriteAccess();
+  const isCrypto = data.category === "crypto";
   const instrument = normalizeInstrument({
-    isin: data.category === "crypto" ? null : (data.isin ?? null),
-    micCode: data.category === "crypto" ? null : (data.micCode ?? null),
-    symbol: data.category === "crypto" ? (data.symbol ?? null) : null,
-    yahooSymbol: data.yahooSymbol ?? null,
-    coingeckoId: data.coingeckoId ?? null,
+    isin: isCrypto ? null : (data.isin ?? null),
+    symbol: data.symbol ?? null,
+    coingeckoId: isCrypto ? (data.coingeckoId ?? null) : null,
     category: data.category,
   });
 
-  if (data.category === "crypto" && !instrument.symbol) {
-    throw new Error("Symbol is required for crypto");
-  }
-  if (data.category === "crypto" && !instrument.coingeckoId) {
-    throw new Error("CoinGecko ID is required for crypto");
-  }
-  if (data.category !== "crypto" && !instrument.isin) {
-    throw new Error("ISIN is required");
-  }
+  validateInstrument(instrument, isCrypto);
 
   const db = getDb();
   const [inserted] = await db
@@ -135,8 +126,6 @@ export async function addPosition(data: {
       portfolioId: context.id,
       isin: instrument.isin,
       symbol: instrument.symbol,
-      micCode: instrument.micCode,
-      yahooSymbol: instrument.yahooSymbol,
       coingeckoId: instrument.coingeckoId,
       title: data.title,
       category: data.category,

@@ -4,7 +4,7 @@ import { getDb } from "./db";
 import { logProductionError } from "./errors";
 import {
   cacheIsin,
-  cacheMicCode,
+  cacheQuoteSymbol,
   createFxInstrument,
   type InstrumentRef,
   type MarketContext,
@@ -79,7 +79,7 @@ async function getCachedQuotes(
         ...unique.map((instrument) =>
           and(
             eq(priceCache.isin, cacheIsin(instrument)),
-            eq(priceCache.micCode, cacheMicCode(instrument.micCode)),
+            eq(priceCache.quoteSymbol, cacheQuoteSymbol(instrument)),
           ),
         ),
       ),
@@ -88,7 +88,7 @@ async function getCachedQuotes(
   const map = new Map<string, Quote>();
   const now = Date.now();
   for (const row of rows) {
-    const instrument = instrumentFromCacheRow(row.isin, row.micCode, ctx);
+    const instrument = instrumentFromCacheRow(row.isin, row.quoteSymbol, ctx);
     const fetchedAt = row.fetchedAt;
     const age = now - fetchedAt.getTime();
     map.set(quoteKey(instrument), {
@@ -144,13 +144,13 @@ async function persistQuotes(results: Map<string, Quote>): Promise<void> {
         .insert(priceCache)
         .values({
           isin: cacheIsin(quote),
-          micCode: cacheMicCode(quote.micCode),
+          quoteSymbol: cacheQuoteSymbol(quote),
           price: String(quote.price),
           currency: quote.currency,
           fetchedAt: quote.fetchedAt,
         })
         .onConflictDoUpdate({
-          target: [priceCache.isin, priceCache.micCode],
+          target: [priceCache.isin, priceCache.quoteSymbol],
           set: {
             price: String(quote.price),
             currency: quote.currency,
@@ -298,7 +298,7 @@ async function fetchEtfQuotes(
   const results = new Map<string, Quote>();
 
   for (const instrument of etfInstruments) {
-    const yahooSymbol = toYahooSymbol(instrument, ctx);
+    const yahooSymbol = toYahooSymbol(instrument);
     if (!yahooSymbol) {
       console.error(`Missing Yahoo symbol for ${quoteKey(instrument)}`);
       continue;

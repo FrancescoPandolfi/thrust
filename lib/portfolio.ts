@@ -6,7 +6,7 @@ import { getQuoteMap, getUsdPerEur } from "@/lib/prices";
 import { positionToInstrument, quoteKey } from "@/lib/instruments";
 import { cashBalances, positions, type Position } from "@/lib/schema";
 
-function mergePositionsByInstrument(rows: Position[]): Position[] {
+export function mergePositionsByInstrument(rows: Position[]): Position[] {
   const merged = new Map<string, Position>();
 
   for (const row of rows) {

@@ -28,7 +28,6 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const isin = searchParams.get("isin")?.trim() || null;
   const symbol = searchParams.get("symbol")?.trim() || null;
-  const micCode = searchParams.get("mic_code")?.trim() || null;
   const refresh = searchParams.get("refresh") === "1";
 
   if (refresh && (!context || !context.canRefreshPrices)) {
@@ -39,9 +38,8 @@ export async function GET(request: Request) {
     return NextResponse.json({
       isin: null,
       symbol: null,
-      micCode: null,
       ok: false,
-      error: "Provide isin (+ mic_code) or symbol query param",
+      error: "Provide isin (+ symbol for ETFs) or symbol query param",
     });
   }
 
@@ -56,10 +54,10 @@ export async function GET(request: Request) {
         .where(
           and(
             inArray(positions.portfolioId, portfolioIds),
-            micCode
+            symbol
               ? and(
                   eq(positions.isin, isin.toUpperCase()),
-                  eq(positions.micCode, micCode.toUpperCase()),
+                  eq(positions.symbol, symbol.toUpperCase()),
                 )
               : eq(positions.isin, isin.toUpperCase()),
           ),
@@ -82,14 +80,13 @@ export async function GET(request: Request) {
   }
 
   const instrument = normalizeInstrument(
-    instrumentFromQuery({ isin, symbol, micCode }, matchedPosition),
+    instrumentFromQuery({ isin, symbol }, matchedPosition),
   );
   const result = await probeQuote(instrument, { refresh });
 
   return NextResponse.json({
     isin: instrument.isin,
     symbol: instrument.symbol,
-    micCode: instrument.micCode,
     label: formatInstrumentLabel(instrument),
     provider: result.provider,
     ok: result.ok,
@@ -98,7 +95,6 @@ export async function GET(request: Request) {
       ? {
           isin: result.quote.isin,
           symbol: result.quote.symbol,
-          micCode: result.quote.micCode,
           label: formatInstrumentLabel(result.quote),
           price: result.quote.price,
           currency: result.quote.currency,

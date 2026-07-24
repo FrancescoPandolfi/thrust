@@ -1,7 +1,7 @@
 import { eq } from "drizzle-orm";
 import { getDb } from "./db";
 import type { MarketContext } from "./instruments";
-import { exchanges, quoteSources } from "./schema";
+import { quoteSources } from "./schema";
 
 const FX_SOURCE_ID = "fx_eurusd";
 
@@ -18,12 +18,13 @@ export async function loadMarketContext(
   }
 
   const db = getDb();
-  const [exchangeRows, fxRows] = await Promise.all([
-    db.select().from(exchanges),
-    db.select().from(quoteSources).where(eq(quoteSources.id, FX_SOURCE_ID)).limit(1),
-  ]);
+  const [fxRow] = await db
+    .select()
+    .from(quoteSources)
+    .where(eq(quoteSources.id, FX_SOURCE_ID))
+    .limit(1);
 
-  const fxSymbol = fxRows[0]?.symbol;
+  const fxSymbol = fxRow?.symbol;
   if (!fxSymbol) {
     throw new Error(
       `Missing quote_sources row "${FX_SOURCE_ID}". Run npm run db:seed.`,
@@ -31,9 +32,6 @@ export async function loadMarketContext(
   }
 
   cachedContext = {
-    exchanges: new Map(
-      exchangeRows.map((row) => [row.micCode.toUpperCase(), row.yahooSuffix]),
-    ),
     fxSymbol: fxSymbol.toUpperCase(),
   };
   cachedAt = now;

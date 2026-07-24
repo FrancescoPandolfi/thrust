@@ -14,15 +14,15 @@ type Props = {
 
 export function PositionRow({ position, onEdit, onDelete, readOnly = false }: Props) {
   const plPositive = position.plEur >= 0;
-  const instrumentLabel = position.symbol ?? position.isin ?? "—";
+  const instrumentLabel = position.isin ?? position.symbol ?? "—";
 
   return (
     <tr className="border-b border-zinc-800/60 even:bg-zinc-900/50 hover:bg-zinc-800/20">
       <td className="px-4 py-2.5 font-mono text-xs text-zinc-300">
         <span>{instrumentLabel}</span>
-        {position.micCode && (
+        {position.isin && position.symbol && position.category !== "crypto" && (
           <span className="mt-0.5 block text-[10px] text-zinc-500">
-            {position.micCode}
+            {position.symbol}
           </span>
         )}
         {position.stale && (

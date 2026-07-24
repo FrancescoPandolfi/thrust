@@ -187,8 +187,12 @@ export function PositionEditModal({ position, onClose }: Props) {
   const [title, setTitle] = useState(position.title);
   const [category, setCategory] = useState<Category>(position.category);
   const [isin, setIsin] = useState(position.isin ?? "");
-  const [micCode, setMicCode] = useState(position.micCode ?? "");
-  const [symbol, setSymbol] = useState(position.symbol ?? "");
+  const [etfSymbol, setEtfSymbol] = useState(
+    position.category === "crypto" ? "" : (position.symbol ?? ""),
+  );
+  const [symbol, setSymbol] = useState(
+    position.category === "crypto" ? (position.symbol ?? "") : "",
+  );
   const [coingeckoId, setCoingeckoId] = useState(position.coingeckoId ?? "");
   const [sharesMode, setSharesMode] = useState<EditMode>("adjust");
   const [loadValueMode, setLoadValueMode] = useState<EditMode>("adjust");
@@ -229,7 +233,7 @@ export function PositionEditModal({ position, onClose }: Props) {
     nextCategory: Category,
     nextTitle: string,
     nextIsin: string,
-    nextMicCode: string,
+    nextEtfSymbol: string,
     nextSymbol: string,
     nextCoingeckoId: string,
   ): boolean {
@@ -243,7 +247,7 @@ export function PositionEditModal({ position, onClose }: Props) {
     }
     return (
       nextIsin.trim().toUpperCase() !== (position.isin ?? "").toUpperCase() ||
-      nextMicCode.trim().toUpperCase() !== (position.micCode ?? "").toUpperCase()
+      nextEtfSymbol.trim().toUpperCase() !== (position.symbol ?? "").toUpperCase()
     );
   }
 
@@ -261,7 +265,7 @@ export function PositionEditModal({ position, onClose }: Props) {
       );
       const nextTitle = title.trim();
       const nextIsin = isin.trim();
-      const nextMicCode = micCode.trim();
+      const nextEtfSymbol = etfSymbol.trim();
       const nextSymbol = symbol.trim();
       const nextCoingeckoId = coingeckoId.trim();
 
@@ -273,6 +277,8 @@ export function PositionEditModal({ position, onClose }: Props) {
         if (!nextCoingeckoId) throw new Error("CoinGecko ID is required for crypto");
       } else if (!nextIsin) {
         throw new Error("ISIN is required");
+      } else if (!nextEtfSymbol) {
+        throw new Error("Yahoo symbol is required for ETFs");
       }
 
       const changed =
@@ -282,7 +288,7 @@ export function PositionEditModal({ position, onClose }: Props) {
           category,
           nextTitle,
           nextIsin,
-          nextMicCode,
+          nextEtfSymbol,
           nextSymbol,
           nextCoingeckoId,
         );
@@ -292,8 +298,7 @@ export function PositionEditModal({ position, onClose }: Props) {
           title: nextTitle,
           category,
           isin: isCrypto ? undefined : nextIsin,
-          micCode: isCrypto ? null : nextMicCode || null,
-          symbol: isCrypto ? nextSymbol : undefined,
+          symbol: isCrypto ? nextSymbol : nextEtfSymbol,
           coingeckoId: isCrypto ? nextCoingeckoId : null,
           shares: nextShares,
           loadValueEur: nextLoadValue,
@@ -435,18 +440,18 @@ export function PositionEditModal({ position, onClose }: Props) {
               </div>
               <div>
                 <label
-                  htmlFor={`${formId}-mic`}
+                  htmlFor={`${formId}-etf-symbol`}
                   className="mb-1.5 block text-sm font-medium text-zinc-400"
                 >
-                  MIC code{" "}
-                  <span className="font-normal text-zinc-500">(optional)</span>
+                  Yahoo symbol
                 </label>
                 <input
-                  id={`${formId}-mic`}
-                  value={micCode}
+                  id={`${formId}-etf-symbol`}
+                  value={etfSymbol}
                   disabled={saving}
-                  onChange={(event) => setMicCode(event.target.value)}
-                  placeholder="XETR"
+                  onChange={(event) => setEtfSymbol(event.target.value)}
+                  required
+                  placeholder="EMIM.AS"
                   className="w-full rounded-lg border border-zinc-700 bg-zinc-800 px-3 py-2 font-mono text-sm uppercase text-zinc-100 placeholder:text-zinc-500 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/50"
                 />
               </div>

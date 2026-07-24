@@ -1,11 +1,8 @@
 import type { Category, Position } from "./schema";
-import { lookupYahooTicker } from "./yahoo-tickers";
 
 export type InstrumentRef = {
   isin: string | null;
-  micCode: string | null;
   symbol: string | null;
-  yahooSymbol: string | null;
   coingeckoId: string | null;
   category: Category | null;
 };
@@ -19,7 +16,6 @@ export type Quote = InstrumentRef & {
 };
 
 export type MarketContext = {
-  exchanges: Map<string, string>;
   fxSymbol: string;
 };
 
@@ -27,34 +23,45 @@ export type MarketContext = {
 export function quoteKey(instrument: InstrumentRef): string {
   const normalized = normalizeInstrument(instrument);
   if (normalized.symbol) return normalized.symbol;
-  if (!normalized.isin) return "";
-  return normalized.micCode
-    ? `${normalized.isin}:${normalized.micCode}`
-    : normalized.isin;
+  return normalized.isin ?? "";
 }
 
-/** ISIN or crypto/FX symbol stored in price_cache.isin column. */
+/** Primary cache key (ISIN for ETFs, trading symbol for crypto/FX). */
 export function cacheIsin(instrument: InstrumentRef): string {
   const normalized = normalizeInstrument(instrument);
+  if (isCryptoInstrument(normalized)) {
+    return normalized.symbol ?? "";
+  }
+  if (isEtfInstrument(normalized)) {
+    return normalized.isin ?? "";
+  }
   return normalized.symbol ?? normalized.isin ?? "";
 }
 
-/** MIC code stored in price_cache (empty string when not applicable). */
-export function cacheMicCode(micCode: string | null | undefined): string {
-  return micCode ?? "";
+/** Secondary cache key (Yahoo symbol for ETFs; empty otherwise). */
+export function cacheQuoteSymbol(instrument: InstrumentRef): string {
+  const normalized = normalizeInstrument(instrument);
+  if (isEtfInstrument(normalized)) {
+    return normalized.symbol ?? "";
+  }
+  return "";
 }
 
 export function hasInstrumentId(instrument: InstrumentRef): boolean {
   const normalized = normalizeInstrument(instrument);
+  if (isCryptoInstrument(normalized)) {
+    return Boolean(normalized.symbol);
+  }
+  if (isEtfInstrument(normalized)) {
+    return Boolean(normalized.isin && normalized.symbol);
+  }
   return Boolean(normalized.symbol || normalized.isin);
 }
 
 export function normalizeInstrument(input: InstrumentRef): InstrumentRef {
   return {
     isin: input.isin?.trim().toUpperCase() || null,
-    micCode: input.micCode?.trim().toUpperCase() || null,
     symbol: input.symbol?.trim().toUpperCase() || null,
-    yahooSymbol: input.yahooSymbol?.trim() || null,
     coingeckoId: input.coingeckoId?.trim() || null,
     category: input.category,
   };
@@ -64,23 +71,24 @@ export function instrumentsEqual(a: InstrumentRef, b: InstrumentRef): boolean {
   return quoteKey(a) === quoteKey(b);
 }
 
-export function positionToInstrument(position: Position): InstrumentRef {
-  if (position.category === "crypto") {
-    return normalizeInstrument({
-      isin: null,
-      micCode: null,
-      symbol: position.symbol,
-      yahooSymbol: position.yahooSymbol,
-      coingeckoId: position.coingeckoId,
-      category: position.category,
-    });
+export function isEtfInstrument(instrument: InstrumentRef): boolean {
+  if (
+    instrument.category === "equity_etf" ||
+    instrument.category === "bond_etf"
+  ) {
+    return true;
   }
+  return Boolean(
+    instrument.isin &&
+      instrument.symbol &&
+      !isCryptoInstrument(instrument),
+  );
+}
 
+export function positionToInstrument(position: Position): InstrumentRef {
   return normalizeInstrument({
-    isin: position.isin,
-    micCode: position.micCode,
-    symbol: null,
-    yahooSymbol: position.yahooSymbol,
+    isin: position.category === "crypto" ? null : position.isin,
+    symbol: position.symbol,
     coingeckoId: position.coingeckoId,
     category: position.category,
   });
@@ -88,18 +96,16 @@ export function positionToInstrument(position: Position): InstrumentRef {
 
 export function instrumentFromCacheRow(
   isin: string,
-  micCode: string,
+  quoteSymbol: string,
   ctx: MarketContext,
 ): InstrumentRef {
   const normalizedIsin = isin.trim().toUpperCase();
-  const mic = micCode.trim().toUpperCase() || null;
+  const symbol = quoteSymbol.trim().toUpperCase() || null;
 
   if (isFxSymbol(normalizedIsin, ctx.fxSymbol)) {
     return {
       isin: null,
-      micCode: null,
       symbol: normalizedIsin,
-      yahooSymbol: null,
       coingeckoId: null,
       category: null,
     };
@@ -108,19 +114,24 @@ export function instrumentFromCacheRow(
   if (isCryptoPairSymbol(normalizedIsin)) {
     return {
       isin: null,
-      micCode: null,
       symbol: normalizedIsin,
-      yahooSymbol: null,
       coingeckoId: null,
       category: "crypto",
     };
   }
 
+  if (symbol) {
+    return {
+      isin: normalizedIsin,
+      symbol,
+      coingeckoId: null,
+      category: null,
+    };
+  }
+
   return {
     isin: normalizedIsin,
-    micCode: mic,
     symbol: null,
-    yahooSymbol: null,
     coingeckoId: null,
     category: null,
   };
@@ -142,51 +153,32 @@ export function isCryptoPairSymbol(symbol: string | null | undefined): boolean {
   return /^[A-Z0-9]+-[A-Z]{3}$/.test(symbol.trim().toUpperCase());
 }
 
-export function toYahooSymbol(
-  instrument: InstrumentRef,
-  ctx: MarketContext,
-): string {
+export function toYahooSymbol(instrument: InstrumentRef): string {
   const normalized = normalizeInstrument(instrument);
-  if (normalized.yahooSymbol) return normalized.yahooSymbol;
-
-  if (normalized.isin && normalized.micCode) {
-    const mapped = lookupYahooTicker(normalized.isin, normalized.micCode);
-    if (mapped) return mapped;
-
-    const suffix = ctx.exchanges.get(normalized.micCode);
-    if (suffix) return `${normalized.isin}.${suffix}`;
-  }
-
-  return normalized.symbol ?? normalized.isin ?? "";
+  return normalized.symbol ?? "";
 }
 
 export function instrumentFromQuery(
   params: {
     isin?: string | null;
     symbol?: string | null;
-    micCode?: string | null;
-    yahooSymbol?: string | null;
     coingeckoId?: string | null;
     category?: Category | null;
   },
   position?: Pick<
     Position,
-    "isin" | "symbol" | "micCode" | "yahooSymbol" | "coingeckoId" | "category"
+    "isin" | "symbol" | "coingeckoId" | "category"
   > | null,
 ): InstrumentRef {
   const isin = params.isin?.trim() || position?.isin || null;
   const symbol = params.symbol?.trim() || position?.symbol || null;
-  const micCode = params.micCode?.trim() || position?.micCode || null;
-  const yahooSymbol = params.yahooSymbol?.trim() || position?.yahooSymbol || null;
   const coingeckoId = params.coingeckoId?.trim() || position?.coingeckoId || null;
   const category = params.category ?? position?.category ?? null;
 
-  if (symbol) {
+  if (category === "crypto" || (!isin && symbol)) {
     return normalizeInstrument({
       isin: null,
-      micCode: null,
       symbol,
-      yahooSymbol,
       coingeckoId,
       category: category === "crypto" ? "crypto" : category,
     });
@@ -195,9 +187,7 @@ export function instrumentFromQuery(
   if (isin) {
     return normalizeInstrument({
       isin,
-      micCode,
-      symbol: null,
-      yahooSymbol,
+      symbol,
       coingeckoId,
       category,
     });
@@ -205,9 +195,7 @@ export function instrumentFromQuery(
 
   return normalizeInstrument({
     isin: null,
-    micCode: null,
     symbol: null,
-    yahooSymbol: null,
     coingeckoId: null,
     category: null,
   });
@@ -215,18 +203,16 @@ export function instrumentFromQuery(
 
 export function formatInstrumentLabel(instrument: InstrumentRef): string {
   const normalized = normalizeInstrument(instrument);
-  if (normalized.symbol) return normalized.symbol;
-  return normalized.micCode
-    ? `${normalized.isin}:${normalized.micCode}`
-    : (normalized.isin ?? "—");
+  if (normalized.isin && normalized.symbol) {
+    return `${normalized.isin} (${normalized.symbol})`;
+  }
+  return normalized.symbol ?? normalized.isin ?? "—";
 }
 
 export function createFxInstrument(ctx: MarketContext): InstrumentRef {
   return {
     isin: null,
-    micCode: null,
     symbol: ctx.fxSymbol,
-    yahooSymbol: null,
     coingeckoId: null,
     category: null,
   };
