@@ -1,0 +1,23 @@
+---
+description: Use Francesco's personal email for git commits in this repo
+alwaysApply: true
+---
+
+# Git commit author
+
+When creating commits in this repository, always set the author and committer email to `francesco.pan@gmail.com`.
+
+Do **not** run `git config` to change this. Pass env vars on each commit:
+
+```bash
+GIT_AUTHOR_NAME='Francesco Pandolfi' \
+GIT_AUTHOR_EMAIL='francesco.pan@gmail.com' \
+GIT_COMMITTER_NAME='Francesco Pandolfi' \
+GIT_COMMITTER_EMAIL='francesco.pan@gmail.com' \
+git commit -m "$(cat <<'EOF'
+Message here.
+EOF
+)"
+```
+
+Note: `git push` uses GitHub credentials, not the commit email. The email above affects commit metadata only.
