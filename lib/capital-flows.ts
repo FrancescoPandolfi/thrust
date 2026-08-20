@@ -139,6 +139,30 @@ export async function getCapitalFlowsByMonth(
     });
 }
 
+export async function getCapitalFlowsForPositions(
+  positionIds: string[],
+  limit = 50,
+): Promise<CapitalFlowRow[]> {
+  if (positionIds.length === 0) return [];
+
+  const db = getDb();
+  const rows = await db
+    .select()
+    .from(capitalFlows)
+    .where(inArray(capitalFlows.positionId, positionIds))
+    .orderBy(desc(capitalFlows.createdAt))
+    .limit(limit);
+
+  return rows.map((row) => ({
+    id: row.id,
+    date: String(row.date),
+    amountEur: toNum(row.amountEur),
+    title: row.title,
+    sharesDelta: row.sharesDelta != null ? toNum(row.sharesDelta) : null,
+    createdAt: row.createdAt,
+  }));
+}
+
 export async function getCapitalFlows(
   limit = 200,
   portfolioIds?: string[],

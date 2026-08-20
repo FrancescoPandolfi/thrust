@@ -217,3 +217,9 @@ export function createFxInstrument(ctx: MarketContext): InstrumentRef {
     category: null,
   };
 }
+
+export function instrumentDetailPath(instrument: InstrumentRef): string | null {
+  const key = quoteKey(normalizeInstrument(instrument));
+  if (!key) return null;
+  return `/instruments/${encodeURIComponent(key)}`;
+}

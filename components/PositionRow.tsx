@@ -1,7 +1,9 @@
 "use client";
 
+import Link from "next/link";
 import type { ComputedPosition } from "@/lib/calculations";
 import { formatEur, formatNumber, formatPercentPoints, formatPct, formatUsd, SHARES_DECIMALS } from "@/lib/format";
+import { instrumentDetailPath, positionToInstrument } from "@/lib/instruments";
 import { CopyValueButton } from "./CopyValueButton";
 import { DeleteIconButton, EditIconButton } from "./icons/ActionButtons";
 
@@ -15,6 +17,7 @@ type Props = {
 export function PositionRow({ position, onEdit, onDelete, readOnly = false }: Props) {
   const plPositive = position.plEur >= 0;
   const instrumentLabel = position.isin ?? position.symbol ?? "—";
+  const detailPath = instrumentDetailPath(positionToInstrument(position));
 
   return (
     <tr className="border-b border-zinc-800/60 even:bg-zinc-900/50 hover:bg-zinc-800/20">
@@ -31,7 +34,18 @@ export function PositionRow({ position, onEdit, onDelete, readOnly = false }: Pr
           </span>
         )}
       </td>
-      <td className="px-4 py-2.5 text-zinc-200">{position.title}</td>
+      <td className="px-4 py-2.5 text-zinc-200">
+        {detailPath ? (
+          <Link
+            href={detailPath}
+            className="font-medium text-zinc-100 underline decoration-zinc-600 underline-offset-2 transition-colors hover:text-accent hover:decoration-accent/60"
+          >
+            {position.title}
+          </Link>
+        ) : (
+          position.title
+        )}
+      </td>
       <td className="px-4 py-2.5 text-right font-mono tabular-nums text-zinc-400">
         {formatPercentPoints(position.weightPct, 1)}
       </td>
