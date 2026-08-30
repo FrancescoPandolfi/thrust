@@ -1,7 +1,7 @@
 "use client";
 
 import { MetricCard } from "@/components/MetricCard";
-import { formatDate, formatEur, formatPct } from "@/lib/format";
+import { formatDate, formatEur, formatPctAdaptive } from "@/lib/format";
 
 type Props = {
   date: string;
@@ -28,7 +28,7 @@ export function ReturnsSummary({
   const returnValue =
     returnEur != null
       ? `${plPrefix}${formatEur(returnEur)}${
-          returnPct != null ? ` (${pctPrefix}${formatPct(returnPct)})` : ""
+          returnPct != null ? ` (${pctPrefix}${formatPctAdaptive(returnPct)})` : ""
         }`
       : "—";
 
@@ -40,7 +40,8 @@ export function ReturnsSummary({
         hint={inProgress ? "Day in progress" : undefined}
       />
       <MetricCard
-        label="Start value (previous day)"
+        label="Opening value"
+        hint={inProgress ? "Midnight snapshot" : undefined}
         value={startValueEur != null ? formatEur(startValueEur) : "—"}
       />
       <MetricCard
