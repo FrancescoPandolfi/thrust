@@ -58,6 +58,24 @@ export async function requireAuth(): Promise<void> {
   }
 }
 
+export async function requireUserId(): Promise<string> {
+  const userId = await getCurrentUserId();
+  if (!userId) {
+    throw new Error("Unauthorized");
+  }
+  return userId;
+}
+
+/** Personal net-worth edits (cash, real estate) — not tied to portfolio role. */
+export async function requireUserWriteAccess(): Promise<string> {
+  await requireAuth();
+  const role = await getCurrentUserRole();
+  if (role === "viewer") {
+    throw new Error("Forbidden");
+  }
+  return requireUserId();
+}
+
 /** Global app admin — user management only. */
 export async function requireAdmin(): Promise<void> {
   await requireAuth();

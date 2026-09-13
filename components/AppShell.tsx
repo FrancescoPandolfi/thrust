@@ -13,8 +13,8 @@ import type { UserRole } from "@/lib/schema";
 
 const NAV = [
   { href: "/", label: "Portfolio" },
-  { href: "/cash", label: "Cash" },
   { href: "/returns", label: "Returns" },
+  { href: "/net-worth", label: "Net Worth" },
   { href: "/flows", label: "Flows" },
   { href: "/settings", label: "Settings" },
 ];

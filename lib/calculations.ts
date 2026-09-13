@@ -1,5 +1,5 @@
 import { quoteKey, positionToInstrument, type Quote } from "./instruments";
-import type { CashBalance, Position } from "./schema";
+import type { CashBalance, Position, RealEstateAsset } from "./schema";
 
 export type ComputedPosition = Position & {
   price: number;
@@ -15,7 +15,9 @@ export type ComputedPosition = Position & {
 export type PortfolioTotals = {
   positionsValueEur: number;
   cashValueEur: number;
+  realEstateValueEur: number;
   totalValueEur: number;
+  netWorthEur: number;
   totalLoadEur: number;
   totalPlEur: number;
   totalPlPct: number;
@@ -33,8 +35,13 @@ export function computePortfolio(
   quotes: Map<string, Quote>,
   includeCash = true,
   usdPerEur = 1.08,
+  realEstate: RealEstateAsset[] = [],
 ): { positions: ComputedPosition[]; totals: PortfolioTotals } {
   const cashValueEur = cash.reduce((sum, c) => sum + toNum(c.amountEur), 0);
+  const realEstateValueEur = realEstate.reduce(
+    (sum, asset) => sum + toNum(asset.valueEur),
+    0,
+  );
 
   const computed: ComputedPosition[] = positions.map((pos) => {
     const quote = quotes.get(quoteKey(positionToInstrument(pos)));
@@ -67,6 +74,7 @@ export function computePortfolio(
   const totalValueEur = includeCash
     ? positionsValueEur + cashValueEur
     : positionsValueEur;
+  const netWorthEur = totalValueEur + realEstateValueEur;
   const totalPlEur = computed.reduce((s, p) => s + p.plEur, 0);
   const totalPlPct = totalLoadEur > 0 ? positionsValueEur / totalLoadEur - 1 : 0;
   const totalBasisWithCash = totalLoadEur + cashValueEur;
@@ -86,7 +94,9 @@ export function computePortfolio(
     totals: {
       positionsValueEur,
       cashValueEur,
+      realEstateValueEur,
       totalValueEur,
+      netWorthEur,
       totalLoadEur,
       totalPlEur,
       totalPlPct,
