@@ -90,11 +90,21 @@ export const positions = pgTable("positions", {
 
 export const cashBalances = pgTable("cash_balances", {
   id: uuid("id").primaryKey().defaultRandom(),
-  portfolioId: uuid("portfolio_id")
+  userId: uuid("user_id")
     .notNull()
-    .references(() => portfolios.id, { onDelete: "cascade" }),
+    .references(() => users.id, { onDelete: "cascade" }),
   label: text("label").notNull(),
   amountEur: numeric("amount_eur", { precision: 18, scale: 2 }).notNull(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+export const realEstateAssets = pgTable("real_estate_assets", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  userId: uuid("user_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  label: text("label").notNull(),
+  valueEur: numeric("value_eur", { precision: 18, scale: 2 }).notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
@@ -154,6 +164,7 @@ export type Position = typeof positions.$inferSelect;
 export type Exchange = typeof exchanges.$inferSelect;
 export type QuoteSource = typeof quoteSources.$inferSelect;
 export type CashBalance = typeof cashBalances.$inferSelect;
+export type RealEstateAsset = typeof realEstateAssets.$inferSelect;
 export type CapitalFlow = typeof capitalFlows.$inferSelect;
 export type DailySnapshot = typeof dailySnapshots.$inferSelect;
 export type Category = (typeof categoryEnum.enumValues)[number];

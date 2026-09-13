@@ -4,7 +4,8 @@ import { getPortfolioContext } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getQuoteMap, getUsdPerEur } from "@/lib/prices";
 import { positionToInstrument, quoteKey } from "@/lib/instruments";
-import { cashBalances, positions, type Position } from "@/lib/schema";
+import { loadCurrentUserAssets } from "@/lib/user-assets";
+import { positions, type Position } from "@/lib/schema";
 
 export function mergePositionsByInstrument(rows: Position[]): Position[] {
   const merged = new Map<string, Position>();
@@ -51,17 +52,15 @@ async function resolvePortfolioIds(): Promise<string[]> {
 export async function loadPortfolioData(refresh = false) {
   const portfolioIds = await resolvePortfolioIds();
   const db = getDb();
-  const [posRows, cashRows] = await Promise.all([
-    db
-      .select()
-      .from(positions)
-      .where(inArray(positions.portfolioId, portfolioIds))
-      .orderBy(positions.sortOrder),
-    db
-      .select()
-      .from(cashBalances)
-      .where(inArray(cashBalances.portfolioId, portfolioIds)),
-  ]);
+  const [{ cash: cashRows, realEstate: realEstateRows }, posRows] =
+    await Promise.all([
+      loadCurrentUserAssets(),
+      db
+        .select()
+        .from(positions)
+        .where(inArray(positions.portfolioId, portfolioIds))
+        .orderBy(positions.sortOrder),
+    ]);
 
   const mergedPositions =
     portfolioIds.length > 1 ? mergePositionsByInstrument(posRows) : posRows;
@@ -77,6 +76,7 @@ export async function loadPortfolioData(refresh = false) {
     quotes,
     true,
     usdPerEur,
+    realEstateRows,
   );
 
   const groups = groupByCategory(computed);
@@ -133,24 +133,3 @@ export async function verifyPositionInActivePortfolio(
   return row ?? null;
 }
 
-export async function verifyCashInActivePortfolio(
-  cashId: string,
-): Promise<{ id: string; portfolioId: string } | null> {
-  const portfolioIds = await resolvePortfolioIds();
-  if (portfolioIds.length !== 1) {
-    return null;
-  }
-
-  const db = getDb();
-  const [row] = await db
-    .select({ id: cashBalances.id, portfolioId: cashBalances.portfolioId })
-    .from(cashBalances)
-    .where(
-      and(
-        eq(cashBalances.id, cashId),
-        eq(cashBalances.portfolioId, portfolioIds[0]),
-      ),
-    )
-    .limit(1);
-  return row ?? null;
-}

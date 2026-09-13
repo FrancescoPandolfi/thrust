@@ -46,6 +46,18 @@ export function formatPct(value: number): string {
   return pctFormatter.format(value);
 }
 
+/** Like formatPct, but keeps small intraday moves readable (e.g. -0,004% vs -0,00%). */
+export function formatPctAdaptive(value: number): string {
+  const abs = Math.abs(value);
+  const decimals =
+    abs >= 0.01 ? 2 : abs >= 0.001 ? 3 : abs >= 0.00001 ? 4 : 2;
+  return new Intl.NumberFormat(DISPLAY_LOCALE, {
+    style: "percent",
+    minimumFractionDigits: decimals,
+    maximumFractionDigits: decimals,
+  }).format(value);
+}
+
 export function formatNumber(value: number, decimals = 2): string {
   return new Intl.NumberFormat(DISPLAY_LOCALE, {
     minimumFractionDigits: decimals,

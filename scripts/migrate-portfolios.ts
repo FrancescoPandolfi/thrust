@@ -44,7 +44,7 @@ async function main() {
     )
   `);
 
-  for (const table of ["positions", "cash_balances", "capital_flows", "daily_snapshots"]) {
+  for (const table of ["positions", "capital_flows", "daily_snapshots"]) {
     await exec(`
       ALTER TABLE ${table}
       ADD COLUMN IF NOT EXISTS portfolio_id uuid REFERENCES portfolios(id) ON DELETE CASCADE
@@ -84,7 +84,7 @@ async function main() {
   const portfolioId = defaultPortfolio.id;
   console.log(`Using default portfolio: ${portfolioId}`);
 
-  for (const table of ["positions", "cash_balances", "capital_flows", "daily_snapshots"]) {
+  for (const table of ["positions", "capital_flows", "daily_snapshots"]) {
     await exec(`
       UPDATE ${table}
       SET portfolio_id = '${portfolioId}'
@@ -119,7 +119,7 @@ async function main() {
     END $$
   `);
 
-  for (const table of ["positions", "cash_balances", "capital_flows", "daily_snapshots"]) {
+  for (const table of ["positions", "capital_flows", "daily_snapshots"]) {
     await exec(`
       ALTER TABLE ${table}
       ALTER COLUMN portfolio_id SET NOT NULL

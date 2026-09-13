@@ -4,56 +4,56 @@ import { eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { requireUserWriteAccess } from "@/lib/auth";
 import { getDb } from "@/lib/db";
-import { cashBalances } from "@/lib/schema";
-import { verifyCashOwnedByUser } from "@/lib/user-assets";
+import { realEstateAssets } from "@/lib/schema";
+import { verifyRealEstateOwnedByUser } from "@/lib/user-assets";
 
 const NET_WORTH_PATH = "/net-worth";
 
-export async function updateCashBalance(
+export async function updateRealEstateAsset(
   id: string,
   label: string,
-  amountEur: number,
+  valueEur: number,
 ) {
   const userId = await requireUserWriteAccess();
-  const current = await verifyCashOwnedByUser(id, userId);
+  const current = await verifyRealEstateOwnedByUser(id, userId);
   if (!current) {
-    throw new Error("Cash balance not found");
+    throw new Error("Real estate asset not found");
   }
 
   const db = getDb();
   await db
-    .update(cashBalances)
+    .update(realEstateAssets)
     .set({
       label: label.trim(),
-      amountEur: String(amountEur),
+      valueEur: String(valueEur),
       updatedAt: new Date(),
     })
-    .where(eq(cashBalances.id, id));
+    .where(eq(realEstateAssets.id, id));
   revalidatePath("/");
   revalidatePath(NET_WORTH_PATH);
 }
 
-export async function addCashBalance(label: string, amountEur: number) {
+export async function addRealEstateAsset(label: string, valueEur: number) {
   const userId = await requireUserWriteAccess();
   const db = getDb();
-  await db.insert(cashBalances).values({
+  await db.insert(realEstateAssets).values({
     userId,
     label: label.trim(),
-    amountEur: String(amountEur),
+    valueEur: String(valueEur),
   });
   revalidatePath("/");
   revalidatePath(NET_WORTH_PATH);
 }
 
-export async function deleteCashBalance(id: string) {
+export async function deleteRealEstateAsset(id: string) {
   const userId = await requireUserWriteAccess();
-  const current = await verifyCashOwnedByUser(id, userId);
+  const current = await verifyRealEstateOwnedByUser(id, userId);
   if (!current) {
-    throw new Error("Cash balance not found");
+    throw new Error("Real estate asset not found");
   }
 
   const db = getDb();
-  await db.delete(cashBalances).where(eq(cashBalances.id, id));
+  await db.delete(realEstateAssets).where(eq(realEstateAssets.id, id));
   revalidatePath("/");
   revalidatePath(NET_WORTH_PATH);
 }

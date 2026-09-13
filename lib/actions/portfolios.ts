@@ -30,7 +30,7 @@ import type { PortfolioRole } from "@/lib/schema";
 
 const REVALIDATE_PATHS = [
   "/",
-  "/cash",
+  "/net-worth",
   "/returns",
   "/flows",
   "/settings",

@@ -3,7 +3,6 @@
 import { useState } from "react";
 import type { CashBalance } from "@/lib/schema";
 import { formatEur } from "@/lib/format";
-import { MetricCard } from "@/components/MetricCard";
 import { CashBalanceModal } from "./CashBalanceModal";
 import { CashDeleteConfirmModal } from "./CashDeleteConfirmModal";
 import { DeleteIconButton, EditIconButton } from "./icons/ActionButtons";
@@ -26,12 +25,14 @@ export function CashSection({ balances, cashValueEur, readOnly = false }: Props)
 
   return (
     <>
-      <div className="space-y-3">
-        <MetricCard label="Cash" value={formatEur(cashValueEur)} />
-
-        <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
-          <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
-            <h2 className="text-sm font-medium text-zinc-200">Balances</h2>
+      <div className="overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
+        <div className="flex items-center justify-between border-b border-zinc-800 px-4 py-3">
+          <div>
+            <h2 className="text-sm font-medium text-zinc-200">Cash</h2>
+            <p className="text-xs text-zinc-500">
+              Total: {formatEur(cashValueEur)}
+            </p>
+          </div>
             {!readOnly && (
               <button
                 type="button"
@@ -79,7 +80,6 @@ export function CashSection({ balances, cashValueEur, readOnly = false }: Props)
               ))}
             </tbody>
           </table>
-        </div>
       </div>
 
       {!readOnly && modal?.mode === "add" && (

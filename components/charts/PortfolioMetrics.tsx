@@ -1,7 +1,7 @@
 "use client";
 
 import { MetricCard } from "@/components/MetricCard";
-import { formatEur, formatPct } from "@/lib/format";
+import { formatEur, formatPct, formatPctAdaptive } from "@/lib/format";
 
 type Props = {
   totalValueEur: number;
@@ -38,7 +38,7 @@ export function PortfolioMetrics({
     todayReturnEur != null
       ? `${todayPrefix}${formatEur(todayReturnEur)}${
           todayReturnPct != null
-            ? ` (${todayPctPrefix}${formatPct(todayReturnPct)})`
+            ? ` (${todayPctPrefix}${formatPctAdaptive(todayReturnPct)})`
             : ""
         }`
       : "—";

@@ -75,19 +75,22 @@ async function getSnapshotRowsForDate(date: string, portfolioIds: string[]) {
     );
 }
 
-async function sumSnapshotValueForDate(
+/** Opening value for a day: sum today's snapshots; portfolios without a row count as 0. */
+async function getOpeningValueEur(
   date: string,
   portfolioIds: string[],
 ): Promise<number | null> {
   const rows = await getSnapshotRowsForDate(date, portfolioIds);
   if (rows.length === 0) return null;
-  return rows.reduce((sum, row) => sum + toNum(row.positionsValueEur), 0);
-}
 
-async function getSnapshotForDate(date: string, portfolioIds: string[]) {
-  const total = await sumSnapshotValueForDate(date, portfolioIds);
-  if (total == null) return null;
-  return { date, positionsValueEur: total };
+  const byPortfolio = new Map(
+    rows.map((row) => [row.portfolioId, toNum(row.positionsValueEur)]),
+  );
+  let total = 0;
+  for (const id of portfolioIds) {
+    total += byPortfolio.get(id) ?? 0;
+  }
+  return total;
 }
 
 async function getPreviousSnapshot(beforeDate: string, portfolioIds: string[]) {
@@ -249,8 +252,6 @@ export async function getTodaySummary() {
   const portfolioIds = await resolvePortfolioIds();
   const today = getRomeDate();
 
-  const todaySnap = await getSnapshotForDate(today, portfolioIds);
-  const prevSnap = await getPreviousSnapshot(today, portfolioIds);
   const nextSnap = await getNextSnapshot(today, portfolioIds);
 
   let liveValue: number | null = null;
@@ -260,11 +261,9 @@ export async function getTodaySummary() {
     liveValue = null;
   }
 
-  const startValue = todaySnap
-    ? todaySnap.positionsValueEur
-    : prevSnap
-      ? prevSnap.positionsValueEur
-      : null;
+  // Opening value comes from today's midnight snapshot only. Falling back to an
+  // older snapshot would measure multiple days, not today's return.
+  const startValue = await getOpeningValueEur(today, portfolioIds);
   const endValue = liveValue;
 
   let returnEur: number | null = null;
