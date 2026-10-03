@@ -28,3 +28,10 @@ export function startOfWeek(date: Date, weekStartsOn: 0 | 1 = 1): Date {
   start.setDate(start.getDate() - diff);
   return start;
 }
+
+export function startOfMonth(date: Date): Date {
+  const start = new Date(date);
+  start.setHours(0, 0, 0, 0);
+  start.setDate(1);
+  return start;
+}

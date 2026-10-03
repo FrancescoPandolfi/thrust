@@ -30,8 +30,9 @@ type ReturnChartRow = {
 type Props = {
   data:
     | ({ date: string } & ReturnChartRow)[]
-    | ({ week: string } & ReturnChartRow)[];
-  indexKey: "date" | "week";
+    | ({ week: string } & ReturnChartRow)[]
+    | ({ month: string } & ReturnChartRow)[];
+  indexKey: "date" | "week" | "month";
   title: string;
 };
 

@@ -3,6 +3,7 @@ import {
   addDays,
   formatIsoDate,
   parseIsoDate,
+  startOfMonth,
   startOfWeek,
   subDays,
 } from "./dates";
@@ -27,6 +28,12 @@ export type DailyReturnRow = {
 
 export type WeeklyReturnRow = {
   week: string;
+  returnEur: number;
+  returnPct: number;
+};
+
+export type MonthlyReturnRow = {
+  month: string;
   returnEur: number;
   returnPct: number;
 };
@@ -230,6 +237,29 @@ export async function getWeeklyReturns(
       const returnEur = rows.reduce((s, r) => s + r.returnEur, 0);
       const returnPct = rows.reduce((acc, r) => acc * (1 + r.returnPct), 1) - 1;
       return { week, returnEur, returnPct };
+    });
+}
+
+export async function getMonthlyReturns(
+  from?: string,
+  to?: string,
+): Promise<MonthlyReturnRow[]> {
+  const daily = await getDailyReturns(from, to);
+  const byMonth = new Map<string, DailyReturnRow[]>();
+
+  for (const row of daily) {
+    const monthStart = formatIsoDate(startOfMonth(parseIsoDate(row.date)));
+    const group = byMonth.get(monthStart) ?? [];
+    group.push(row);
+    byMonth.set(monthStart, group);
+  }
+
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([month, rows]) => {
+      const returnEur = rows.reduce((s, r) => s + r.returnEur, 0);
+      const returnPct = rows.reduce((acc, r) => acc * (1 + r.returnPct), 1) - 1;
+      return { month, returnEur, returnPct };
     });
 }
 
