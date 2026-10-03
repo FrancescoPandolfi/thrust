@@ -202,7 +202,13 @@ export function ReturnsPageClient({
           <div className="border-b border-zinc-800 px-4 py-3">
             <h2 className="text-sm font-medium text-zinc-200">History</h2>
           </div>
-          <ReturnsTable rows={daily} embedded />
+          <ReturnsTable
+            period={period}
+            daily={daily}
+            weekly={weekly}
+            monthly={monthly}
+            embedded
+          />
         </div>
       </section>
     </div>
