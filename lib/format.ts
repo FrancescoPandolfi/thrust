@@ -140,6 +140,15 @@ function parseDateValue(value: string): Date {
   return new Date(value);
 }
 
+/** e.g. "ott 2025" */
+export function formatMonthYear(value: string | Date): string {
+  const date = typeof value === "string" ? parseDateValue(value) : value;
+  return new Intl.DateTimeFormat(DISPLAY_LOCALE, {
+    month: "short",
+    year: "numeric",
+  }).format(date);
+}
+
 /** dd/mm/yyyy */
 export function formatDate(value: string | Date): string {
   const date = typeof value === "string" ? parseDateValue(value) : value;

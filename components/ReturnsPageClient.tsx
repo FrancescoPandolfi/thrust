@@ -8,9 +8,10 @@ import { ReturnsTable } from "@/components/ReturnsTable";
 import type {
   ChartPoint,
   DailyReturnRow,
+  MonthlyReturnRow,
   WeeklyReturnRow,
 } from "@/lib/returns";
-import { formatDate } from "@/lib/format";
+import { formatDate, formatMonthYear } from "@/lib/format";
 
 type TodaySummary = {
   date: string;
@@ -25,6 +26,7 @@ type Props = {
   today: TodaySummary;
   daily: DailyReturnRow[];
   weekly: WeeklyReturnRow[];
+  monthly: MonthlyReturnRow[];
   chart: ChartPoint[];
 };
 
@@ -36,9 +38,15 @@ const RANGES = [
   { label: "All", days: null },
 ] as const;
 
-type Period = "daily" | "weekly";
+type Period = "daily" | "weekly" | "monthly";
 
-export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
+export function ReturnsPageClient({
+  today,
+  daily,
+  weekly,
+  monthly,
+  chart,
+}: Props) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [period, setPeriod] = useState<Period>("daily");
@@ -68,6 +76,14 @@ export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
       week: formatDate(w.week),
       returnPct: w.returnPct,
       returnEur: w.returnEur,
+    }));
+
+  const monthlyChartData = [...monthly]
+    .sort((a, b) => a.month.localeCompare(b.month))
+    .map((m) => ({
+      month: formatMonthYear(m.month),
+      returnPct: m.returnPct,
+      returnEur: m.returnEur,
     }));
 
   const chartPoints = new Map<string, number>();
@@ -133,22 +149,52 @@ export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
             >
               Weekly
             </button>
+            <button
+              type="button"
+              onClick={() => setPeriod("monthly")}
+              className={`cursor-pointer rounded-md px-3 py-1.5 text-sm font-medium transition-colors ${
+                period === "monthly"
+                  ? "bg-zinc-800 text-accent"
+                  : "text-zinc-400 hover:bg-zinc-800/50 hover:text-zinc-200"
+              }`}
+            >
+              Monthly
+            </button>
           </div>
         </div>
 
-        {period === "daily" ? (
-          <ReturnsBarChart
-            data={dailyChartData}
-            indexKey="date"
-            title="Daily returns"
-          />
-        ) : (
-          <ReturnsBarChart
-            data={weeklyChartData}
-            indexKey="week"
-            title="Weekly returns"
-          />
-        )}
+        {(() => {
+          switch (period) {
+            case "daily":
+              return (
+                <ReturnsBarChart
+                  data={dailyChartData}
+                  indexKey="date"
+                  title="Daily returns"
+                />
+              );
+            case "weekly":
+              return (
+                <ReturnsBarChart
+                  data={weeklyChartData}
+                  indexKey="week"
+                  title="Weekly returns"
+                />
+              );
+            case "monthly":
+              return (
+                <ReturnsBarChart
+                  data={monthlyChartData}
+                  indexKey="month"
+                  title="Monthly returns"
+                />
+              );
+            default: {
+              const _exhaustive: never = period;
+              return _exhaustive;
+            }
+          }
+        })()}
       </section>
 
       <section>
@@ -156,7 +202,13 @@ export function ReturnsPageClient({ today, daily, weekly, chart }: Props) {
           <div className="border-b border-zinc-800 px-4 py-3">
             <h2 className="text-sm font-medium text-zinc-200">History</h2>
           </div>
-          <ReturnsTable rows={daily} embedded />
+          <ReturnsTable
+            period={period}
+            daily={daily}
+            weekly={weekly}
+            monthly={monthly}
+            embedded
+          />
         </div>
       </section>
     </div>

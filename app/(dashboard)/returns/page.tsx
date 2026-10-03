@@ -4,6 +4,7 @@ import {
   getDailyReturns,
   getTodaySummary,
   getWeeklyReturns,
+  getMonthlyReturns,
 } from "@/lib/returns";
 import { formatIsoDate, subDays } from "@/lib/dates";
 
@@ -35,18 +36,20 @@ export default async function ReturnsPage({ searchParams }: Props) {
   const params = await searchParams;
   const from = rangeToFrom(params.range);
 
-  const [today, daily, weekly, chart] = await Promise.all([
+  const [today, daily, weekly, monthly, chart] = await Promise.all([
     getTodaySummary(),
     getDailyReturns(from),
     getWeeklyReturns(from),
+    getMonthlyReturns(from),
     getSnapshotsForChart(from),
   ]);
 
   return (
     <ReturnsPageClient
-        today={today}
-        daily={daily}
-        weekly={weekly}
+      today={today}
+      daily={daily}
+      weekly={weekly}
+      monthly={monthly}
       chart={chart}
     />
   );

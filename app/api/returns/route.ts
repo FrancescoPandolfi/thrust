@@ -4,6 +4,7 @@ import { logProductionError } from "@/lib/errors";
 import {
   getDailyReturns,
   getWeeklyReturns,
+  getMonthlyReturns,
   getSnapshotsForChart,
 } from "@/lib/returns";
 
@@ -23,6 +24,11 @@ export async function GET(request: Request) {
     if (period === "week") {
       const weekly = await getWeeklyReturns(from, to);
       return NextResponse.json({ period: "week", data: weekly });
+    }
+
+    if (period === "month") {
+      const monthly = await getMonthlyReturns(from, to);
+      return NextResponse.json({ period: "month", data: monthly });
     }
 
     const daily = await getDailyReturns(from, to);

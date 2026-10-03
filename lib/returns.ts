@@ -3,6 +3,7 @@ import {
   addDays,
   formatIsoDate,
   parseIsoDate,
+  startOfMonth,
   startOfWeek,
   subDays,
 } from "./dates";
@@ -27,9 +28,38 @@ export type DailyReturnRow = {
 
 export type WeeklyReturnRow = {
   week: string;
+  startValueEur: number;
+  endValueEur: number;
   returnEur: number;
   returnPct: number;
 };
+
+export type MonthlyReturnRow = {
+  month: string;
+  startValueEur: number;
+  endValueEur: number;
+  returnEur: number;
+  returnPct: number;
+};
+
+function aggregateReturnRows(
+  rows: DailyReturnRow[],
+): Pick<
+  WeeklyReturnRow,
+  "startValueEur" | "endValueEur" | "returnEur" | "returnPct"
+> {
+  const sorted = [...rows].sort((a, b) => a.date.localeCompare(b.date));
+  const first = sorted[0];
+  const last = sorted[sorted.length - 1];
+  const returnEur = rows.reduce((s, r) => s + r.returnEur, 0);
+  const returnPct = rows.reduce((acc, r) => acc * (1 + r.returnPct), 1) - 1;
+  return {
+    startValueEur: first.startValueEur,
+    endValueEur: last.endValueEur,
+    returnEur,
+    returnPct,
+  };
+}
 
 export type ChartPoint = {
   date: string;
@@ -226,11 +256,32 @@ export async function getWeeklyReturns(
 
   return [...byWeek.entries()]
     .sort(([a], [b]) => b.localeCompare(a))
-    .map(([week, rows]) => {
-      const returnEur = rows.reduce((s, r) => s + r.returnEur, 0);
-      const returnPct = rows.reduce((acc, r) => acc * (1 + r.returnPct), 1) - 1;
-      return { week, returnEur, returnPct };
-    });
+    .map(([week, rows]) => ({
+      week,
+      ...aggregateReturnRows(rows),
+    }));
+}
+
+export async function getMonthlyReturns(
+  from?: string,
+  to?: string,
+): Promise<MonthlyReturnRow[]> {
+  const daily = await getDailyReturns(from, to);
+  const byMonth = new Map<string, DailyReturnRow[]>();
+
+  for (const row of daily) {
+    const monthStart = formatIsoDate(startOfMonth(parseIsoDate(row.date)));
+    const group = byMonth.get(monthStart) ?? [];
+    group.push(row);
+    byMonth.set(monthStart, group);
+  }
+
+  return [...byMonth.entries()]
+    .sort(([a], [b]) => b.localeCompare(a))
+    .map(([month, rows]) => ({
+      month,
+      ...aggregateReturnRows(rows),
+    }));
 }
 
 export async function getSnapshotsForChart(
