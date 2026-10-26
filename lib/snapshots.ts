@@ -16,6 +16,18 @@ export function getRomeDate(date = new Date()): string {
   }).format(date);
 }
 
+/** Hour 0–23 in Europe/Rome (hourCycle h23 so midnight is 0, not 24). */
+export function getRomeHour(date = new Date()): number {
+  const hourPart = new Intl.DateTimeFormat("en-GB", {
+    timeZone: "Europe/Rome",
+    hour: "numeric",
+    hourCycle: "h23",
+  })
+    .formatToParts(date)
+    .find((part) => part.type === "hour");
+  return Number.parseInt(hourPart?.value ?? "0", 10);
+}
+
 async function resolvePortfolioIds(): Promise<string[]> {
   const context = await getPortfolioContext();
   if (!context) {
@@ -74,13 +86,53 @@ export async function captureSnapshotForPortfolio(portfolioId: string) {
   return { portfolioId, date, positionsValueEur };
 }
 
-export async function captureAllSnapshots() {
-  const all = await listAllPortfolios();
-  const results = [];
-  for (const portfolio of all) {
-    results.push(await captureSnapshotForPortfolio(portfolio.id));
+export type SnapshotCapture = {
+  portfolioId: string;
+  date: string;
+  positionsValueEur: number;
+};
+
+export type CaptureAllSnapshotsResult =
+  | {
+      skipped: true;
+      reason: "outside_rome_midnight_hour";
+      romeDate: string;
+      romeHour: number;
+      snapshots: [];
+    }
+  | {
+      skipped: false;
+      romeDate: string;
+      romeHour: number;
+      snapshots: SnapshotCapture[];
+    };
+
+/**
+ * Midnight Europe/Rome opening snapshots. Cron fires at 22:00 and 23:00 UTC so
+ * one of them lands on hour 0 in both CET and CEST; other runs are no-ops.
+ * Pass `force: true` to capture outside that window (manual / reset baseline).
+ */
+export async function captureAllSnapshots(options?: {
+  force?: boolean;
+}): Promise<CaptureAllSnapshotsResult> {
+  const romeDate = getRomeDate();
+  const romeHour = getRomeHour();
+  if (!options?.force && romeHour !== 0) {
+    return {
+      skipped: true,
+      reason: "outside_rome_midnight_hour",
+      romeDate,
+      romeHour,
+      snapshots: [],
+    };
   }
-  return results;
+
+  const all = await listAllPortfolios();
+  const snapshots: SnapshotCapture[] = [];
+  for (const portfolio of all) {
+    snapshots.push(await captureSnapshotForPortfolio(portfolio.id));
+  }
+  return { skipped: false, romeDate, romeHour, snapshots };
 }
 
 /** @deprecated Use captureAllSnapshots or captureSnapshotForPortfolio */
@@ -89,8 +141,14 @@ export async function captureSnapshot() {
   if (context && context.viewMode === "single") {
     return captureSnapshotForPortfolio(context.id);
   }
-  const all = await captureAllSnapshots();
-  return all[0] ?? { portfolioId: "", date: getRomeDate(), positionsValueEur: 0 };
+  const result = await captureAllSnapshots({ force: true });
+  return (
+    result.snapshots[0] ?? {
+      portfolioId: "",
+      date: getRomeDate(),
+      positionsValueEur: 0,
+    }
+  );
 }
 
 export async function getAggregatedSnapshotsByDate(

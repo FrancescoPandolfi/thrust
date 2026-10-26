@@ -11,8 +11,8 @@ export async function GET(request: Request) {
   }
 
   try {
-    const snapshots = await captureAllSnapshots();
-    return NextResponse.json({ ok: true, snapshots });
+    const result = await captureAllSnapshots();
+    return NextResponse.json({ ok: true, ...result });
   } catch (error) {
     console.error(error);
     await logProductionError("cron/snapshot", error, {});

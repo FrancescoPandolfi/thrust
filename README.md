@@ -82,10 +82,9 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
    ```
 
 7. **Vercel Cron** (configured in `vercel.json`):
-   - **Every 30 minutes** — refresh market quotes from Yahoo Finance / CoinGecko
-   - **22:00 UTC** — daily snapshot at midnight **Europe/Rome** (CEST: 00:00 Rome; CET: 23:00 Rome)
+   - **22:00 and 23:00 UTC** — daily opening snapshot at midnight **Europe/Rome**. One of those hours is 00:00 Rome in CEST (UTC+2) and the other in CET (UTC+1); the handler no-ops outside Rome hour 0 so the off-season run does not overwrite the opening value.
 
-   Vercel sends `Authorization: Bearer <CRON_SECRET>` automatically when `CRON_SECRET` is set. Cron jobs that run more often than once per day require a Vercel Pro plan; with Hobby, quotes still auto-refresh every 30 minutes while an admin has the app open.
+   Vercel sends `Authorization: Bearer <CRON_SECRET>` automatically when `CRON_SECRET` is set. Cron jobs that run more often than once per day require a Vercel Pro plan.
 
 ## User roles
 
@@ -113,7 +112,7 @@ Write operations are blocked server-side for viewers, not only in the UI.
 - One snapshot per calendar day (`daily_snapshots.date` primary key).
 - **Daily return for day D** = snapshot(D+1) − snapshot(D) − net capital flows on D. Flows are recorded when you change load value (buy/sell) or add/remove positions; each row stores the position title, EUR amount, and share delta. `startValueEur` is snapshot(D), `endValueEur` is snapshot(D+1); `returnEur` and `returnPct` are derived in code, not stored.
 - `return_pct` is a **decimal ratio** (e.g. `0.00535` = 0.54%). The UI formats it for display.
-- **Today** uses the latest snapshot as start and live portfolio value as end until the next midnight snapshot closes the day.
+- **Today** uses **today’s** midnight snapshot as start and live portfolio value as end. Without today’s opening row, the UI shows “—”.
 
 ## Scripts
 
