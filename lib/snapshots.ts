@@ -108,16 +108,16 @@ export type CaptureAllSnapshotsResult =
     };
 
 /**
- * Midnight Europe/Rome opening snapshots. Cron fires at 22:00 and 23:00 UTC so
- * one of them lands on hour 0 in both CET and CEST; other runs are no-ops.
- * Pass `force: true` to capture outside that window (manual / reset baseline).
+ * Opening snapshots near midnight Europe/Rome.
+ * Hobby allows one cron/day: 23:00 UTC = 00:00 Rome in CET, 01:00 in CEST.
+ * Accept Rome hours 0–1 so both offsets capture; skip later manual hits unless forced.
  */
 export async function captureAllSnapshots(options?: {
   force?: boolean;
 }): Promise<CaptureAllSnapshotsResult> {
   const romeDate = getRomeDate();
   const romeHour = getRomeHour();
-  if (!options?.force && romeHour !== 0) {
+  if (!options?.force && romeHour > 1) {
     return {
       skipped: true,
       reason: "outside_rome_midnight_hour",

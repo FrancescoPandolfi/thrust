@@ -82,9 +82,9 @@ Personal portfolio tracker built with Next.js 16, Drizzle ORM, and Neon Postgres
    ```
 
 7. **Vercel Cron** (configured in `vercel.json`):
-   - **22:00 and 23:00 UTC** — daily opening snapshot at midnight **Europe/Rome**. One of those hours is 00:00 Rome in CEST (UTC+2) and the other in CET (UTC+1); the handler no-ops outside Rome hour 0 so the off-season run does not overwrite the opening value.
+   - **23:00 UTC** once daily — opening snapshot near midnight **Europe/Rome** (CET: 00:00; CEST: 01:00). Hobby allows only one cron run per day, so 23:00 UTC is used year-round; the handler accepts Rome hours 0–1 and no-ops later.
 
-   Vercel sends `Authorization: Bearer <CRON_SECRET>` automatically when `CRON_SECRET` is set. Cron jobs that run more often than once per day require a Vercel Pro plan.
+   Vercel sends `Authorization: Bearer <CRON_SECRET>` automatically when `CRON_SECRET` is set.
 
 ## User roles
 
