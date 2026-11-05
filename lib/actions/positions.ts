@@ -37,7 +37,7 @@ export async function updatePosition(
   id: string,
   data: {
     title: string;
-    category: "equity_etf" | "bond_etf" | "crypto";
+    category: "equity_etf" | "etp_etc" | "bond_etf" | "crypto";
     isin?: string;
     symbol?: string;
     coingeckoId?: string | null;
@@ -104,7 +104,7 @@ export async function addPosition(data: {
   symbol?: string;
   coingeckoId?: string | null;
   title: string;
-  category: "equity_etf" | "bond_etf" | "crypto";
+  category: "equity_etf" | "etp_etc" | "bond_etf" | "crypto";
   shares: number;
   loadValueEur: number;
 }) {

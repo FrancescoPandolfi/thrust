@@ -74,6 +74,7 @@ export function instrumentsEqual(a: InstrumentRef, b: InstrumentRef): boolean {
 export function isEtfInstrument(instrument: InstrumentRef): boolean {
   if (
     instrument.category === "equity_etf" ||
+    instrument.category === "etp_etc" ||
     instrument.category === "bond_etf"
   ) {
     return true;

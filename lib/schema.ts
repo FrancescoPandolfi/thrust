@@ -11,6 +11,7 @@ import {
 
 export const categoryEnum = pgEnum("category", [
   "equity_etf",
+  "etp_etc",
   "bond_etf",
   "crypto",
 ]);

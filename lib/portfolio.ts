@@ -1,5 +1,10 @@
 import { and, eq, inArray } from "drizzle-orm";
-import { computePortfolio, groupByCategory } from "@/lib/calculations";
+import {
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
+  computePortfolio,
+  groupByCategory,
+} from "@/lib/calculations";
 import { getPortfolioContext } from "@/lib/auth";
 import { getDb } from "@/lib/db";
 import { getQuoteMap, getUsdPerEur } from "@/lib/prices";
@@ -80,17 +85,10 @@ export async function loadPortfolioData(refresh = false) {
   );
 
   const groups = groupByCategory(computed);
-  const allocation = (["equity_etf", "bond_etf", "crypto"] as const)
-    .map((cat) => ({
-      name:
-        cat === "equity_etf"
-          ? "Equity ETF"
-          : cat === "bond_etf"
-            ? "Bond ETF"
-            : "Crypto",
-      value: (groups[cat] ?? []).reduce((s, p) => s + p.valueEur, 0),
-    }))
-    .filter((d) => d.value > 0);
+  const allocation = CATEGORY_ORDER.map((cat) => ({
+    name: CATEGORY_LABELS[cat],
+    value: (groups[cat] ?? []).reduce((s, p) => s + p.valueEur, 0),
+  })).filter((d) => d.value > 0);
 
   return { positions: computed, totals, allocation, portfolioIds };
 }

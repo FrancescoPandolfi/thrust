@@ -16,10 +16,20 @@ type Props = {
 
 type EditMode = "set" | "adjust";
 
-const CATEGORIES: Category[] = ["equity_etf", "bond_etf", "crypto"];
+const CATEGORIES: Category[] = [
+  "equity_etf",
+  "etp_etc",
+  "bond_etf",
+  "crypto",
+];
 
 function isCategory(value: string): value is Category {
-  return value === "equity_etf" || value === "bond_etf" || value === "crypto";
+  return (
+    value === "equity_etf" ||
+    value === "etp_etc" ||
+    value === "bond_etf" ||
+    value === "crypto"
+  );
 }
 
 function formatFieldValue(value: number, decimals: number): string {

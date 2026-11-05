@@ -2,7 +2,11 @@
 
 import { Fragment, useState } from "react";
 import type { ComputedPosition } from "@/lib/calculations";
-import { CATEGORY_LABELS, groupByCategory } from "@/lib/calculations";
+import {
+  CATEGORY_LABELS,
+  CATEGORY_ORDER,
+  groupByCategory,
+} from "@/lib/calculations";
 import { formatEur, formatPct } from "@/lib/format";
 import { PlusIcon } from "./icons/ActionIcons";
 import { PositionAddModal } from "./PositionAddModal";
@@ -29,7 +33,7 @@ type ModalState =
 
 export function PortfolioTable({ positions, totals, readOnly = false }: Props) {
   const groups = groupByCategory(positions);
-  for (const cat of ["equity_etf", "bond_etf", "crypto"] as const) {
+  for (const cat of CATEGORY_ORDER) {
     groups[cat]?.sort((a, b) => b.weightPct - a.weightPct);
   }
   const [modal, setModal] = useState<ModalState>(null);
@@ -71,7 +75,7 @@ export function PortfolioTable({ positions, totals, readOnly = false }: Props) {
               </tr>
             </thead>
             <tbody>
-              {(["equity_etf", "bond_etf", "crypto"] as const).map((cat) => {
+              {CATEGORY_ORDER.map((cat) => {
                 const items = groups[cat];
                 if (!items?.length) return null;
                 return (

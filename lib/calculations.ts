@@ -105,11 +105,19 @@ export function computePortfolio(
   };
 }
 
+export const CATEGORY_ORDER = [
+  "equity_etf",
+  "etp_etc",
+  "bond_etf",
+  "crypto",
+] as const;
+
 export function groupByCategory(
   positions: ComputedPosition[],
 ): Record<string, ComputedPosition[]> {
   const groups: Record<string, ComputedPosition[]> = {
     equity_etf: [],
+    etp_etc: [],
     bond_etf: [],
     crypto: [],
   };
@@ -119,8 +127,9 @@ export function groupByCategory(
   return groups;
 }
 
-export const CATEGORY_LABELS: Record<string, string> = {
+export const CATEGORY_LABELS: Record<(typeof CATEGORY_ORDER)[number], string> = {
   equity_etf: "Equity ETF",
+  etp_etc: "ETP / ETC",
   bond_etf: "Bond ETF",
   crypto: "Crypto",
 };
